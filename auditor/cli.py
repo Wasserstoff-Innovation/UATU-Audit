@@ -14,7 +14,13 @@ def audit(
     out: str = typer.Option("out", help="Output root folder"),
     llm: str = typer.Option("off", help="on | off (LLM augmentation)"),
     slither: str = typer.Option("auto", "--slither", help="static analysis mode: auto | host | stub"),
-    eop: str = typer.Option("auto", "--eop", help="EoP test gating: auto | stride | heuristic | both | off")
+    eop: str = typer.Option("auto", "--eop", help="EoP test gating: auto | stride | heuristic | both | off"),
+    llm_provider: str = typer.Option("auto", "--llm-provider", help="auto | openai | anthropic | off"),
+    llm_model: str = typer.Option("", "--llm-model", help="override model name (optional)"),
+    risk: str = typer.Option("on", "--risk", help="on | off (risk scoring)"),
+    risk_config: str = typer.Option(None, "--risk-config", help="path to risk config JSON (optional)"),
+    risk_baseline: str = typer.Option(None, "--risk-baseline", help="path to baseline risk.json for comparison"),
+    risk_export: str = typer.Option("csv", "--risk-export", help="csv | none (export format)")
 ):
     """
     Task 2:
@@ -24,7 +30,7 @@ def audit(
     - threats.json (empty buckets)
     - report.md/html
     """
-    orchestrator = Orchestrator(input_path_or_address=input, kind=kind, out_root=Path(out), llm=(llm=="on"), static_mode=slither, eop_mode=eop)
+    orchestrator = Orchestrator(input_path_or_address=input, kind=kind, out_root=Path(out), llm=(llm=="on"), static_mode=slither, eop_mode=eop, llm_provider=llm_provider, llm_model=llm_model, risk=(risk=="on"), risk_config_path=risk_config, risk_baseline=risk_baseline, risk_export=risk_export)
     outdir = orchestrator.run()
     print(f"[bold green]Audit completed[/bold green] → {outdir}")
 

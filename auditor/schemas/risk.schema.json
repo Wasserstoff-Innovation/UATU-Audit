@@ -1,0 +1,12 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "type":"object",
+  "required":["version","weights","by_function","by_journey","summary"],
+  "properties":{
+    "version":{"type":"string"},
+    "weights":{"type":"object"},
+    "by_function":{"type":"object"},
+    "by_journey":{"type":"object"},
+    "summary":{"type":"object"}
+  }
+}

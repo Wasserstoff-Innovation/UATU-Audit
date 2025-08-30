@@ -3,6 +3,20 @@ import subprocess, json, re
 from pathlib import Path
 from typing import Dict, Any
 
+def forge_build(project_dir: Path, timeout: int = 180) -> tuple[int, str, str]:
+    """Run 'forge build' in the given project dir. Returns (code, stdout, stderr)."""
+    try:
+        proc = subprocess.run(
+            ["forge", "build"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+    except Exception as e:
+        return 99, "", f"forge build exception: {e}"
+
 SUMMARY_RE = re.compile(r"(\d+)\s+passed;\s+(\d+)\s+failed", re.I)
 PASS_RE = re.compile(r"\[PASS\]\s+(test\w+)\b")
 FAIL_RE = re.compile(r"\[FAIL\]\s+(test\w+)\b")

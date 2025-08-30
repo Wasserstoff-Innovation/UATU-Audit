@@ -17,6 +17,32 @@
 {% if (static_path | safe) %}{% endif %}
 (See HTML report for a richer table.)
 
+## Risk Overview
+
+**Overall:** {{ "%.1f"|format(risk_summary.overall if risk_summary else 0) }}
+{% if risk_summary and 'delta_overall' in risk_summary and risk_summary.delta_overall != 0 -%}
+ (Δ {{ "%.1f"|format(risk_summary.delta_overall) }})
+{%- endif %}  
+**Grade:** {{ risk_summary.grade if risk_summary else "N/A" }}
+
+### Top 10 Risky Functions
+{% if risk and risk.summary.top_functions %}
+| # | Function | Score | Grade |
+|---|---|---:|---|
+{% for item in risk.summary.top_functions -%}
+| {{ loop.index }} | `{{ item.key }}` | {{ "%.1f"|format(item.score) }} | {{ item.grade }} |
+{% endfor %}
+{% else %}No high-risk functions identified.{% endif %}
+
+### Risk Heatmap (compact)
+{% if risk_heatmap and risk_heatmap|length > 0 %}
+| Contract | Function | Score | Grade | STRIDE Cats |
+|---|---|---:|---|---|
+{% for row in risk_heatmap -%}
+| {{ row.contract }} | `{{ row.function }}` | {{ "%.1f"|format(row.score) }} | {{ row.grade }} | {{ row.cats }} |
+{% endfor %}
+{% else %}No risk data available.{% endif %}
+
 ## Test Results
 (See HTML report for detailed table.)
 
@@ -25,3 +51,14 @@
 
 ## EoP Coverage
 (See HTML report for detailed table.)
+
+## LLM Assertions
+{% if not llm_meta.enabled %}
+LLM disabled ({{ llm_meta.reason or 'off' }}).
+{% else %}
+Provider: `{{ llm_meta.provider }}`  Model: `{{ llm_meta.model }}`
+
+Artifacts: {{ llm_rows|length }} (see HTML for details)
+
+LLM summary: added {{ llm_stats.added }}, skipped {{ llm_stats.skipped }}, error {{ llm_stats.error }}.
+{% endif %}

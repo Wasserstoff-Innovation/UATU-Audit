@@ -15,21 +15,56 @@ from .testgen.foundry import generate_foundry_tests
 from .runners.forge_runner import run_forge_tests
 from .testgen.soroban import generate_soroban_tests
 from .runners.cargo_runner import run_cargo_tests
+from .llm.engine import detect_provider, LLMMeta
+from .risk.scoring import score as risk_score
 
 class Orchestrator:
-    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto"):
+    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto", llm_provider: str = "auto", llm_model: str = "", risk: bool = True, risk_config_path: str | None = None, risk_baseline: str | None = None, risk_export: str = "csv"):
         self.input = input_path_or_address
         self.kind = kind
         self.out_root = out_root
         self.llm = llm
         self.static_mode = static_mode
         self.eop_mode = eop_mode
+        self.llm_provider = llm_provider
+        self.llm_model = llm_model
+        self.risk = risk
+        self.risk_config_path = risk_config_path
+        self.risk_baseline = risk_baseline
+        self.risk_export = risk_export
 
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         self.outdir = out_root / ts
         self.workdir = self.outdir / "work"
         self.srcdir = self.workdir / "src"
         (self.outdir / "runs").mkdir(parents=True, exist_ok=True)
+
+    def _build_abi_map(self, flows: dict) -> dict:
+        abi = {"functions": {}, "events": {}, "errors": {}}
+        for c in (flows.get("contracts") or []):
+            cname = c.get("name")
+            for f in (c.get("functions") or []):
+                key = f"{cname}.{f.get('name')}"
+                abi["functions"][key] = [{"name": i.get("name",""), "type": i.get("type","")} for i in (f.get("inputs") or [])]
+            for e in (c.get("events") or []):
+                en = e.get("name")
+                # Parse event params from string format like "address indexed caller"
+                event_params = []
+                for param_str in (e.get("params") or []):
+                    parts = param_str.split()
+                    if len(parts) >= 2:
+                        param_type = parts[0]
+                        param_name = parts[-1]
+                        indexed = "indexed" in parts
+                        event_params.append({"name": param_name, "type": param_type, "indexed": indexed})
+                abi["events"].setdefault(cname, {})[en] = event_params
+        # (Optional) custom errors: if your flows capture them, fill here; keep empty otherwise
+        return abi
+
+    def _save_abi_map(self, abi: dict):
+        d = self.outdir / "runs" / "llm"
+        d.mkdir(parents=True, exist_ok=True)
+        (d/"abi.json").write_text(__import__("json").dumps(abi, indent=2))
 
     def _prepare(self) -> None:
         if self.kind not in ["evm", "stellar"]:
@@ -82,9 +117,30 @@ class Orchestrator:
         return threats
 
     def _generate_tests(self, flows: dict, journeys: dict, threats: dict) -> dict:
+        provider_meta = detect_provider(self.llm_provider if self.llm else "off")
+        # allow override model
+        if self.llm and self.llm_model:
+            provider_meta.model = self.llm_model
+        # persist llm meta
+        meta_dir = self.outdir / "runs" / "llm"
+        meta_dir.mkdir(parents=True, exist_ok=True)
+        (meta_dir / "meta.json").write_text(__import__("json").dumps({
+            "enabled": provider_meta.enabled,
+            "provider": provider_meta.provider,
+            "model": provider_meta.model,
+            "reason": provider_meta.reason
+        }, indent=2))
+        
+        # build and save ABI map for EVM contracts
+        abi_map = self._build_abi_map(flows) if self.kind == "evm" else {}
+        if abi_map:
+            self._save_abi_map(abi_map)
+        
         tests = {"tests": []}
         if self.kind == "evm":
-            tests = generate_foundry_tests(flows, journeys, self.srcdir, self.outdir, threats=threats, eop_mode=self.eop_mode)
+            tests = generate_foundry_tests(flows, journeys, self.srcdir, self.outdir,
+                                         threats=threats, eop_mode=self.eop_mode,
+                                         llm_meta=provider_meta, abi_map=abi_map)
         elif self.kind == "stellar":
             tests = generate_soroban_tests(flows, journeys, self.srcdir, self.outdir)
         # persist test meta (e.g., eop_mode)
@@ -108,6 +164,41 @@ class Orchestrator:
                 results["runs"].append(res)
         return results
 
+    def _compute_and_save_risk(self, flows, threats):
+        runs_dir = self.outdir / "runs"
+        risk_dir = runs_dir / "risk"
+        risk_dir.mkdir(parents=True, exist_ok=True)
+
+        slither_norm = (runs_dir / "static" / "slither.normalized.json")
+        slither_norm_j = __import__("json").loads(slither_norm.read_text()) if slither_norm.exists() else None
+
+        # Load baseline if provided
+        base = None
+        if self.risk_baseline:
+            from pathlib import Path
+            bp = Path(self.risk_baseline)
+            if bp.exists():
+                base = __import__("json").loads(bp.read_text())
+
+        # Aggregate tests (you already write one file per journey)
+        # Optionally pass None; scorer will read runs/tests/*.json by itself using outdir.
+        res = risk_score(
+            outdir=self.outdir,
+            flows=flows,
+            threats=threats,
+            slither_norm=slither_norm_j,
+            test_runs=None,
+            risk_config_path=Path(self.risk_config_path) if self.risk_config_path else None,
+            baseline=base,
+            export_csv=(self.risk_export == "csv"),
+        )
+
+        (risk_dir / "risk.json").write_text(__import__("json").dumps(res, indent=2))
+        # optional schema validation
+        schema_path = Path("auditor/schemas/risk.schema.json")
+        if schema_path.exists():
+            validate_json(res, schema_path)
+
     def _report(self) -> None:
         # very small report that lists contracts and functions
         from .report.builder import build_report
@@ -119,13 +210,14 @@ class Orchestrator:
         journeys = self._journeys(flows)
         self._threats(flows, journeys)
         # load threats from file for gating
-        import json
         threats = {}
         tfile = self.outdir / 'threats.json'
         if tfile.exists():
-            try: threats = json.loads(tfile.read_text())
+            try: threats = __import__("json").loads(tfile.read_text())
             except Exception: threats = {}
         self._generate_tests(flows, journeys, threats)
         self._run_tests()
+        if self.risk:
+            self._compute_and_save_risk(flows, threats)
         self._report()
         return self.outdir

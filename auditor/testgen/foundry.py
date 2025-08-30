@@ -1,6 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from ..llm.engine import LLMMeta, generate_assertion_fn
+from ..runners.forge_runner import forge_build
 import shutil, re, json
 
 SENSITIVE_PREFIXES = [
@@ -97,6 +99,22 @@ def _eop_gate(contract_name: str, fn_name: str, threats: dict | None, eop_mode: 
         return True, 'stride'
     return (has_heur, 'heuristic' if has_heur else 'none')
 
+def _append_llm_and_precheck(project_dir: Path, test_file: Path, marker_name: str, snippet: str) -> tuple[bool, str]:
+    """Append LLM snippet wrapped in markers, forge build, and revert on failure.
+    Returns (kept, reason)."""
+    start_m = f"// >>> LLM:{marker_name} BEGIN"
+    end_m = f"// <<< LLM:{marker_name} END"
+    original = test_file.read_text()
+    patched = original + f"\n\n{start_m}\n{snippet}\n{end_m}\n"
+    test_file.write_text(patched)
+
+    code, out, err = forge_build(project_dir)
+    if code == 0:
+        return True, "ok"
+    # revert
+    test_file.write_text(original)
+    return False, "compile_error"
+
 def _test_contract_name(journey_id: str) -> str:
     base = re.sub(r"[^a-zA-Z0-9]+", " ", journey_id).title().replace(" ", "")
     return f"Test{base}"
@@ -113,7 +131,7 @@ contract Attacker {
 }
 ''';
 
-def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any], threats: dict | None, eop_mode: str) -> str:
+def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any], threats: dict | None, eop_mode: str, llm_meta: LLMMeta | None, journey_id: str, abi_map: dict | None) -> str:
     # collect unique function names used in the journey
     uniq_fns = []
     for st in steps:
@@ -188,6 +206,8 @@ def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict
     }}""")
     eop_block = "\n".join(eop_tests)
 
+    # LLM functions are now appended post-write with compile precheck
+
     return f"""// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "{contract_file_rel}";
@@ -202,10 +222,12 @@ contract GENERATED_{contract_name}_{uniq_fns[0]} {{
 {neg_block}
 {stress_block}
 {eop_block}
+// LLM functions appended post-write with compile precheck
 }}
 """
 
-def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_src: Path, outdir: Path, threats: dict | None = None, eop_mode: str = 'auto') -> Dict[str,Any]:
+def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_src: Path, outdir: Path,
+    threats: dict | None = None, eop_mode: str = 'auto', llm_meta: LLMMeta | None = None, abi_map: dict | None = None) -> Dict[str,Any]:
     tests_idx = {"tests": []}
     root_tests = outdir / "tests" / "evm"
     for j in journeys.get("journeys", []):
@@ -228,10 +250,57 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
             (proj / "SKIPPED.txt").write_text(f"Contract file for {c_name} not found.")
             continue
         rel = Path("..") / "src" / cfile.relative_to(src)
-        code = _make_test_code(str(rel).replace("\\", "/"), c_name, steps, flows, threats, eop_mode)
+        code = _make_test_code(str(rel).replace("\\", "/"), c_name, steps, flows, threats, eop_mode, llm_meta, jid, abi_map)
         tname = _test_contract_name(jid)
         tfile = test / f"{tname}.t.sol"
         tfile.write_text(code)
+        
+        # --- LLM POST-WRITE: append snippets one-by-one with compile precheck ---
+        if llm_meta is not None and llm_meta.enabled:
+            # Collect uniq functions of this journey again (same logic as in _make_test_code)
+            uniq_fns = []
+            for st in steps:
+                fn = st.get("function")
+                if fn and fn not in uniq_fns:
+                    uniq_fns.append(fn)
+
+            # find meta of contract & param types
+            contract_meta = None
+            for c in flows.get("contracts", []):
+                if c.get("name") == c_name:
+                    contract_meta = c
+                    break
+
+            tmap = (threats or {}).get('by_function', {}) if isinstance(threats, dict) else {}
+
+            for fn in uniq_fns:
+                # resolve param types + default args
+                types = []
+                pos_args = []
+                for cfn in (contract_meta or {}).get('functions', []):
+                    if cfn.get('name') == fn:
+                        types = [i.get('type','') for i in cfn.get('inputs', [])]
+                        pos_args = [ _default_arg(i.get('type','')) for i in cfn.get('inputs', []) ]
+                        break
+                key = f"{c_name}.{fn}"
+                bucket = tmap.get(key, {}) if isinstance(tmap, dict) else {}
+
+                res = generate_assertion_fn(outdir, jid, c_name, fn, types, pos_args, bucket, llm_meta, abi_map=abi_map)
+                # Cache already written by engine; only include if valid AND compiles
+                if res.get("added") and res.get("snippet"):
+                    kept, reason = _append_llm_and_precheck(project_dir=proj, test_file=tfile, marker_name=f"{jid}__{fn}", snippet=res["snippet"])
+                    # Always update the meta.json with the reason (ok or compile_error)
+                    try:
+                        meta_path = (outdir / "runs" / "llm" / f"{jid}__{fn}.meta.json")
+                        if meta_path.exists():
+                            j = json.loads(meta_path.read_text())
+                        else:
+                            j = {}
+                        j["reason"] = reason
+                        meta_path.write_text(json.dumps(j, indent=2))
+                    except Exception:
+                        pass
+        
         # minimal foundry.toml
         (proj / "foundry.toml").write_text("[profile.default]\nsrc = 'src'\ntest = 'test'\n")
         tests_idx["tests"].append({

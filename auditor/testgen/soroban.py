@@ -7,7 +7,7 @@ def _default_rust_arg(ty: str) -> str:
     t = (ty or "").replace("&", "").strip()
     # Soroban common types
     if t.endswith('Env') or t.endswith('soroban_sdk::Env') or t == 'Env': return 'Env::default()'  # not used as arg when using client
-    if t.endswith('Address') or t == 'Address': return 'TestAddress::generate(&e)'
+    if t.endswith('Address') or t == 'Address': return '&<soroban_sdk::Address as soroban_sdk::testutils::Address>::generate(&e)'
     if t.endswith('Symbol') or t == 'Symbol': return 'Symbol::new(&e, "sym")'
     if t.endswith('Bytes') or t.startswith('BytesN'): return 'Bytes::new(&e)'
     if t in ('i128',): return '1_i128'
@@ -97,7 +97,6 @@ soroban-sdk = {{ version = "21.0.0", features = ["testutils"] }}
                 calls.append(f"    let _ = client.{fn}({args});")
             body = "\n".join(calls) if calls else "    // no-op"
             (proj / "tests" / "generated.rs").write_text(f"""use soroban_sdk::{{testutils::*, Env, Address, Symbol, Bytes}};
-use soroban_sdk::testutils::Address as TestAddress;
 use lib_{jid.replace('-', '_')}::*;
 
 #[test]

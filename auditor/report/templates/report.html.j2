@@ -126,4 +126,98 @@ th{background:#f5f5f5}
     </table>
   {% endif %}
 
+  <h2>LLM Assertions</h2>
+  <p><b>Summary:</b> added {{ llm_stats.added }}, skipped {{ llm_stats.skipped }}, error {{ llm_stats.error }}.</p>
+  {% if not llm_meta.enabled %}
+    <p>LLM disabled (reason: {{ llm_meta.reason or 'off' }}).</p>
+  {% else %}
+    <p>Provider: <code>{{ llm_meta.provider }}</code> &nbsp; Model: <code>{{ llm_meta.model }}</code></p>
+    {% if llm_rows|length == 0 %}
+      <p>No LLM artifacts found.</p>
+    {% else %}
+      <table>
+        <tr><th>Artifact</th><th>Status</th><th>Provider</th><th>Model</th><th>Error</th></tr>
+        {% for r in llm_rows %}
+          <tr>
+            <td>{{ r.artifact }}</td>
+            <td>{{ r.reason or 'ok' }}</td>
+            <td>{{ r.provider or '-' }}</td>
+            <td>{{ r.model or '-' }}</td>
+            <td>{% if r.error %}{{ r.error }}{% else %}-{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  {% endif %}
+
+<h2>Risk Overview</h2>
+{% set overall = risk_summary.overall if risk_summary else 0 %}
+{% set d = risk_summary.delta_overall if risk_summary and 'delta_overall' in risk_summary else 0 %}
+<p>
+  <b>Overall:</b> {{ "%.1f"|format(overall) }}
+  {% if d != 0 %}
+    {% if d > 0 %}
+      <span style="color:#c0392b;">(+{{"%.1f"|format(d)}} ↑ worse)</span>
+    {% else %}
+      <span style="color:#2e7d32;">({{"%.1f"|format(d)}} ↓ better)</span>
+    {% endif %}
+  {% endif %}
+  &nbsp;&nbsp;<b>Grade:</b> {{ risk_summary.grade if risk_summary else "N/A" }}
+</p>
+
+{% if risk and risk.summary.top_functions %}
+<h3>Top 10 Risky Functions</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>#</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th></tr>
+  {% for item in risk.summary.top_functions %}
+    {% set row = risk.by_function[item.key] if risk and risk.by_function and item.key in risk.by_function else None %}
+    {% set delta = row.delta if row and 'delta' in row else 0 %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.key }}</td>
+      <td>{{ "%.1f"|format(item.score) }}</td>
+      <td>
+        {% if delta>0 %}<span style="color:#c0392b;">+{{"%.1f"|format(delta)}} ↑</span>
+        {% elif delta<0 %}<span style="color:#2e7d32;">{{"%.1f"|format(delta)}} ↓</span>
+        {% else %}<span>0.0</span>{% endif %}
+      </td>
+      <td>{{ item.grade }}</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>Risk Heatmap</h2>
+{% if risk_heatmap and risk_heatmap|length > 0 %}
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>Contract</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th><th>STRIDE</th></tr>
+  {% for row in risk_heatmap %}
+    {% set bg = '#e6ffe6' %}
+    {% if row.score >= 90 %}{% set bg = '#ffcccc' %}
+    {% elif row.score >= 75 %}{% set bg = '#ffd6cc' %}
+    {% elif row.score >= 50 %}{% set bg = '#fff0cc' %}
+    {% elif row.score >= 25 %}{% set bg = '#f2ffcc' %}{% endif %}
+    <tr style="background: {{ bg }};">
+      <td>{{ row.contract }}</td>
+      <td>{{ row.function }}</td>
+      <td>{{ "%.1f"|format(row.score) }}</td>
+          <td>
+      {% set delta = row.delta if row and 'delta' in row else 0 %}
+      {% if delta>0 %}<span style="color:#c0392b;">+{{"%.1f"|format(delta)}} ↑</span>
+      {% elif delta<0 %}<span style="color:#2e7d32;">{{"%.1f"|format(delta)}} ↓</span>
+      {% else %}<span>0.0</span>{% endif %}
+    </td>
+      <td>{{ row.grade }}</td>
+      <td>
+        {% for c in row.cats %}
+          <span style="display:inline-block;padding:2px 6px;border-radius:10px;margin-right:4px;background:{{ stride_badges.get(c, '#eee') }};">{{ c }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No risk data available.</p>
+{% endif %}
+
 </body></html>
