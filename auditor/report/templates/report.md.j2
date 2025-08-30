@@ -1,0 +1,24 @@
+# Contract Audit Report (Task 3)
+
+## Contracts & Functions
+{% for c in flows.contracts %}
+### {{ c.name }}
+- Events: {% for e in c.events %}{{e.name}}{{ ", " if not loop.last }}{% endfor %}
+- Functions:
+{% for f in c.functions %}
+  - **{{ f.name }}** (visibility: {{ f.visibility or "n/a" }}, mutability: {{ f.mutability or "n/a" }})
+    - inputs: {% for i in f.inputs %}{{ i.type }} {{ i.name }}{{ ", " if not loop.last }}{% endfor %}
+{% endfor %}
+{% endfor %}
+
+## Findings (Slither)
+{% set static_path = outdir ~ '/runs/static/slither.normalized.json' %}
+{% set findings = [] %}
+{% if (static_path | safe) %}{% endif %}
+(See HTML report for a richer table.)
+
+## Test Results
+(See HTML report for detailed table.)
+
+## Top Gas
+(See HTML report for the full table.)

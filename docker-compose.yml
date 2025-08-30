@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  auditor:
+    build: .
+    image: contract-auditor
+    working_dir: /work
+    volumes:
+      - ./:/work
+    entrypoint: ["auditor"]

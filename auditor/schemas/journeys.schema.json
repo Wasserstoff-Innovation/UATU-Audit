@@ -1,0 +1,31 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["journeys"],
+  "properties":{
+    "journeys":{
+      "type":"array",
+      "items":{
+        "type":"object",
+        "required":["id","steps"],
+        "properties":{
+          "id":{"type":"string"},
+          "tags":{"type":"array","items":{"type":"string"}},
+          "chain":{"type":["string","null"]},
+          "steps":{
+            "type":"array",
+            "items":{
+              "type":"object",
+              "required":["contract","function","actor"],
+              "properties":{
+                "contract":{"type":"string"},
+                "function":{"type":"string"},
+                "actor":{"type":"string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

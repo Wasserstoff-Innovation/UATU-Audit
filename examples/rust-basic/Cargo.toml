@@ -1,0 +1,11 @@
+[package]
+name = "rust_basic_contract"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_basic_contract"
+path = "src/lib.rs"
+
+[dev-dependencies]
+# none required

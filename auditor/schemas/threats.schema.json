@@ -1,0 +1,29 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["by_function","by_journey"],
+  "properties":{
+    "by_function":{"type":"object","additionalProperties":{
+      "type":"object",
+      "properties":{
+        "spoofing":{"type":"array","items":{"type":"string"}},
+        "tampering":{"type":"array","items":{"type":"string"}},
+        "repudiation":{"type":"array","items":{"type":"string"}},
+        "information_disclosure":{"type":"array","items":{"type":"string"}},
+        "denial_of_service":{"type":"array","items":{"type":"string"}},
+        "elevation_of_privilege":{"type":"array","items":{"type":"string"}}
+      }
+    }},
+    "by_journey":{"type":"object","additionalProperties":{
+      "type":"object",
+      "properties":{
+        "spoofing":{"type":"array","items":{"type":"string"}},
+        "tampering":{"type":"array","items":{"type":"string"}},
+        "repudiation":{"type":"array","items":{"type":"string"}},
+        "information_disclosure":{"type":"array","items":{"type":"string"}},
+        "denial_of_service":{"type":"array","items":{"type":"string"}},
+        "elevation_of_privilege":{"type":"array","items":{"type":"string"}}
+      }
+    }}
+  }
+}

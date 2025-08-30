@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "contract-auditor"
+version = "0.1.0"
+description = "Multi-chain, STRIDE-driven smart contract auditor (orchestrator + plugins)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "You" }]
+dependencies = [
+  "typer[all]>=0.12.0",
+  "pydantic>=2.6.0",
+  "jinja2>=3.1.0",
+  "jsonschema>=4.21.0",
+  "rich>=13.7.0",
+  "requests>=2.31.0"
+]
+
+[project.scripts]
+auditor = "auditor.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["auditor"]

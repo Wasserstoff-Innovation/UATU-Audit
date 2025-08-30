@@ -1,0 +1,109 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Contract Audit Report</title>
+<style>
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}
+th{background:#f5f5f5}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#eee;margin-right:4px}
+</style>
+</head>
+<body>
+  <h1>Contract Audit Report</h1>
+  <p><strong>Static Analysis:</strong> {{ static_meta.mode or 'unknown' }}{% if static_meta.ok is defined %} (ok: {{ static_meta.ok }}){% endif %}</p>
+
+  <h2>Contracts & Functions</h2>
+  {% for c in flows.contracts %}
+    <h3>{{ c.name }}</h3>
+    <p><strong>Events:</strong>
+      {% for e in c.events %}{{ e.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+    </p>
+    <ul>
+      {% for f in c.functions %}
+        <li><strong>{{ f.name }}</strong> — visibility: {{ f.visibility or "n/a" }}, mutability: {{ f.mutability or "n/a" }}
+          <br/>inputs:
+          {% for i in f.inputs %}{{ i.type }} {{ i.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+
+  {% set slither_norm = outdir + '/runs/static/slither.normalized.json' %}
+  {% set threats_json = outdir + '/threats.json' %}
+
+  <h2>Findings (Slither)</h2>
+  {% set findings = [] %}
+  {% if slither_norm %}
+    {% set _ignore = findings.extend(load_json(slither_norm)) %}
+  {% endif %}
+  {% if findings|length == 0 %}
+    <p>No normalized findings (either none detected or Slither failed).</p>
+  {% else %}
+    <table>
+      <tr><th>Severity</th><th>Check</th><th>Contract.Function</th><th>Location</th></tr>
+      {% for f in findings %}
+        <tr>
+          <td>{{ f.severity }}</td>
+          <td>{{ f.title }}</td>
+          <td>{{ (f.contract or '-') ~ '.' ~ (f.function or '-') }}</td>
+          <td>{{ f.location or '-' }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
+  <h2>STRIDE Coverage</h2>
+  {% set threats = {} %}
+  {% if threats_json %}
+    {% set threats = load_json(threats_json) %}
+  {% endif %}
+  {% if threats.by_function %}
+    <table>
+      <tr>
+        <th>Function</th>
+        <th>Spoofing</th>
+        <th>Tampering</th>
+        <th>Repudiation</th>
+        <th>Info Disclosure</th>
+        <th>DoS</th>
+        <th>EoP</th>
+      </tr>
+      {% for fn, cats in threats.by_function.items() %}
+      <tr>
+        <td>{{ fn }}</td>
+        <td>{{ cats.spoofing|length }}</td>
+        <td>{{ cats.tampering|length }}</td>
+        <td>{{ cats.repudiation|length }}</td>
+        <td>{{ cats.information_disclosure|length }}</td>
+        <td>{{ cats.denial_of_service|length }}</td>
+        <td>{{ cats.elevation_of_privilege|length }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No STRIDE entries found.</p>
+  {% endif %}
+
+  <h2>Test Results</h2>
+  {% if test_runs|length == 0 %}
+    <p>No test runs found.</p>
+  {% else %}
+    <table>
+      <tr><th>Journey</th><th>Passed</th><th>Failed</th></tr>
+      {% for r in test_runs %}
+        <tr><td>{{ r.project }}</td><td>{{ r.passed }}</td><td>{{ r.failed }}</td></tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
+  <h2>Top Gas</h2>
+  {% if gas_top|length == 0 %}
+    <p>No gas data captured.</p>
+  {% else %}
+    <table>
+      <tr><th>#</th><th>Journey</th><th>Test</th><th>Gas</th></tr>
+      {% for row in gas_top %}
+        <tr><td>{{ loop.index }}</td><td>{{ row.journey }}</td><td>{{ row.test }}</td><td>{{ row.gas }}</td></tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
+</body></html>
