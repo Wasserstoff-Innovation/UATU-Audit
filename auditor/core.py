@@ -17,12 +17,13 @@ from .testgen.soroban import generate_soroban_tests
 from .runners.cargo_runner import run_cargo_tests
 
 class Orchestrator:
-    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto"):
+    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto"):
         self.input = input_path_or_address
         self.kind = kind
         self.out_root = out_root
         self.llm = llm
         self.static_mode = static_mode
+        self.eop_mode = eop_mode
 
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         self.outdir = out_root / ts
@@ -80,12 +81,16 @@ class Orchestrator:
         json_dump_atomic(self.outdir / "threats.json", threats)
         return threats
 
-    def _generate_tests(self, flows: dict, journeys: dict) -> dict:
+    def _generate_tests(self, flows: dict, journeys: dict, threats: dict) -> dict:
         tests = {"tests": []}
         if self.kind == "evm":
-            tests = generate_foundry_tests(flows, journeys, self.srcdir, self.outdir)
+            tests = generate_foundry_tests(flows, journeys, self.srcdir, self.outdir, threats=threats, eop_mode=self.eop_mode)
         elif self.kind == "stellar":
             tests = generate_soroban_tests(flows, journeys, self.srcdir, self.outdir)
+        # persist test meta (e.g., eop_mode)
+        meta_dir = self.outdir / "runs" / "tests"
+        meta_dir.mkdir(parents=True, exist_ok=True)
+        (meta_dir / "meta.json").write_text(__import__("json").dumps({"eop_mode": self.eop_mode}, indent=2))
         return tests
 
     def _run_tests(self) -> dict:
@@ -113,7 +118,14 @@ class Orchestrator:
         flows = self._explore()
         journeys = self._journeys(flows)
         self._threats(flows, journeys)
-        self._generate_tests(flows, journeys)
+        # load threats from file for gating
+        import json
+        threats = {}
+        tfile = self.outdir / 'threats.json'
+        if tfile.exists():
+            try: threats = json.loads(tfile.read_text())
+            except Exception: threats = {}
+        self._generate_tests(flows, journeys, threats)
         self._run_tests()
         self._report()
         return self.outdir

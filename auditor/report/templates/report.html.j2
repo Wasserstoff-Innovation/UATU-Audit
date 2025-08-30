@@ -106,4 +106,24 @@ th{background:#f5f5f5}
     </table>
   {% endif %}
 
+  <h2>EoP Coverage</h2>
+  <p>Mode: <code>{{ eop_mode }}</code></p>
+  {% if eop_rows|length == 0 %}
+    <p>No EoP candidates in this run.</p>
+  {% else %}
+    <table>
+      <tr><th>Contract</th><th>Function</th><th>Gating</th><th>Journey</th><th>Tested</th><th>Status</th></tr>
+      {% for r in eop_rows %}
+        <tr>
+          <td>{{ r.contract }}</td>
+          <td>{{ r.function }}</td>
+          <td>{{ r.gating }}</td>
+          <td>{{ r.project }}</td>
+          <td>{{ 'yes' if r.tested else 'no' }}</td>
+          <td>{% if r.status %}{{ r.status }}{% else %}-{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
 </body></html>

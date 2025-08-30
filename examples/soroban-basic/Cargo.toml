@@ -1,0 +1,15 @@
+[package]
+name = "soroban_basic_contract"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+name = "soroban_basic_contract"
+path = "src/lib.rs"
+
+[dependencies]
+soroban-sdk = { version = "21.0.0", features = ["alloc"] }
+
+[dev-dependencies]
+soroban-sdk = { version = "21.0.0", features = ["testutils"] }

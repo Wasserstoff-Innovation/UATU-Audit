@@ -155,12 +155,50 @@ def _extract_rust_flows(root: Path) -> dict:
                 })
     return {"contracts": contracts}
 
+def _extract_soroban_flows(root: Path) -> dict:
+    # Heuristics for Soroban:
+    # - #[contract] pub struct Name;
+    # - #[contractimpl] impl Name { pub fn foo(env: Env, ...) ... }
+    contracts = []
+    for f in root.rglob("*.rs"):
+        try:
+            txt = f.read_text(errors="ignore")
+        except Exception:
+            continue
+        # find contract structs
+        for m in re.finditer(r"#\[contract\]\s*pub\s+struct\s+([A-Za-z0-9_]+)", txt):
+            cname = m.group(1)
+            functions = []
+            # scan impl blocks annotated with #[contractimpl] for this contract
+            impl_pat = re.compile(rf"#\[contractimpl\]\s*impl\s+{cname}\s*\{{(.*?)\}}", re.S)
+            for iblk in impl_pat.findall(txt):
+                for fnm in re.finditer(r"\bpub\s+fn\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)", iblk):
+                    fname = fnm.group(1)
+                    args = [a.strip() for a in fnm.group(2).split(",") if a.strip()]
+                    inputs = []
+                    for a in args:
+                        if ":" in a:
+                            nm, ty = [x.strip() for x in a.split(":",1)]
+                        else:
+                            nm, ty = a, "Unknown"
+                        # drop the Env param from inputs to better match client call signatures
+                        if ty.endswith("Env") or ty.endswith("soroban_sdk::Env") or ty == "Env":
+                            continue
+                        inputs.append({"name": nm, "type": ty})
+                    functions.append({"name": fname, "visibility":"public", "mutability":None, "inputs":inputs, "outputs":[]})
+            if functions:
+                contracts.append({"name": cname, "events": [], "functions": functions})
+    # fallback to generic rust if none found
+    if not contracts:
+        return _extract_rust_flows(root)
+    return {"contracts": contracts}
+
 # Update the main function to route based on kind
 def extract_flows_from_dir(src_dir: Path, kind: str = "evm") -> Dict[str, Any]:
     if kind == "evm":
         return _extract_evm_flows(src_dir)
     elif kind == "stellar":
-        return _extract_rust_flows(src_dir)
+        return _extract_soroban_flows(src_dir)
     else:
         # fallback to EVM for unknown kinds
         return _extract_evm_flows(src_dir)

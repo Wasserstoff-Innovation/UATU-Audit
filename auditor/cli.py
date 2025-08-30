@@ -13,7 +13,8 @@ def audit(
     kind: str = typer.Option("evm", "--kind", help="evm | stellar"),
     out: str = typer.Option("out", help="Output root folder"),
     llm: str = typer.Option("off", help="on | off (LLM augmentation)"),
-    slither: str = typer.Option("auto", "--slither", help="static analysis mode: auto | host | stub")
+    slither: str = typer.Option("auto", "--slither", help="static analysis mode: auto | host | stub"),
+    eop: str = typer.Option("auto", "--eop", help="EoP test gating: auto | stride | heuristic | both | off")
 ):
     """
     Task 2:
@@ -23,7 +24,7 @@ def audit(
     - threats.json (empty buckets)
     - report.md/html
     """
-    orchestrator = Orchestrator(input_path_or_address=input, kind=kind, out_root=Path(out), llm=(llm=="on"), static_mode=slither)
+    orchestrator = Orchestrator(input_path_or_address=input, kind=kind, out_root=Path(out), llm=(llm=="on"), static_mode=slither, eop_mode=eop)
     outdir = orchestrator.run()
     print(f"[bold green]Audit completed[/bold green] → {outdir}")
 

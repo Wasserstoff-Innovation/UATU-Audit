@@ -73,6 +73,30 @@ def _find_contract_file(src_dir: Path, contract_name: str) -> Optional[Path]:
             pass
     return None
 
+def _eop_gate(contract_name: str, fn_name: str, threats: dict | None, eop_mode: str) -> tuple[bool,str]:
+    fl = (fn_name or '')
+    has_heur = _is_sensitive_fn(fl)
+    has_stride = False
+    if threats:
+        key = f"{contract_name}.{fn_name}"
+        bucket = threats.get('by_function', {}).get(key, {}) if isinstance(threats, dict) else {}
+        eops = (bucket or {}).get('elevation_of_privilege') or []
+        has_stride = len(eops) > 0
+    m = (eop_mode or 'auto').lower()
+    if m == 'off':
+        return False, 'off'
+    if m == 'stride':
+        return has_stride, 'stride'
+    if m == 'heuristic':
+        return has_heur, 'heuristic'
+    if m == 'both':
+        src = 'stride+heuristic' if (has_stride and has_heur) else ('stride' if has_stride else ('heuristic' if has_heur else 'none'))
+        return has_stride or has_heur, src
+    # auto: prefer stride if present, else fallback to heuristic
+    if has_stride:
+        return True, 'stride'
+    return (has_heur, 'heuristic' if has_heur else 'none')
+
 def _test_contract_name(journey_id: str) -> str:
     base = re.sub(r"[^a-zA-Z0-9]+", " ", journey_id).title().replace(" ", "")
     return f"Test{base}"
@@ -89,7 +113,7 @@ contract Attacker {
 }
 ''';
 
-def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any]) -> str:
+def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any], threats: dict | None, eop_mode: str) -> str:
     # collect unique function names used in the journey
     uniq_fns = []
     for st in steps:
@@ -143,7 +167,8 @@ def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict
     eop_tests = []
     contract_meta = next((c for c in flows.get('contracts', []) if c['name'] == contract_name), None) or {}
     for fn in uniq_fns:
-        if not _is_sensitive_fn(fn):
+        ok, _src = _eop_gate(contract_name, fn, threats, eop_mode)
+        if not ok:
             continue
         types = []
         pos_args = []
@@ -180,7 +205,7 @@ contract GENERATED_{contract_name}_{uniq_fns[0]} {{
 }}
 """
 
-def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_src: Path, outdir: Path) -> Dict[str,Any]:
+def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_src: Path, outdir: Path, threats: dict | None = None, eop_mode: str = 'auto') -> Dict[str,Any]:
     tests_idx = {"tests": []}
     root_tests = outdir / "tests" / "evm"
     for j in journeys.get("journeys", []):
@@ -203,7 +228,7 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
             (proj / "SKIPPED.txt").write_text(f"Contract file for {c_name} not found.")
             continue
         rel = Path("..") / "src" / cfile.relative_to(src)
-        code = _make_test_code(str(rel).replace("\\", "/"), c_name, steps, flows)
+        code = _make_test_code(str(rel).replace("\\", "/"), c_name, steps, flows, threats, eop_mode)
         tname = _test_contract_name(jid)
         tfile = test / f"{tname}.t.sol"
         tfile.write_text(code)
