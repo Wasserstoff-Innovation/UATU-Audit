@@ -1,0 +1,368 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Contract Audit Report</title>
+<style>
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}
+th{background:#f5f5f5}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#eee;margin-right:4px}
+</style>
+</head>
+<body>
+  <h1>Contract Audit Report</h1>
+  <p><strong>Static Analysis:</strong> stub (ok: True)</p>
+
+  <h2>Contracts & Functions</h2>
+  
+    <h3>Sample</h3>
+    <p><strong>Events:</strong>
+      Ping, CountUpdated
+    </p>
+    <ul>
+      
+        <li><strong>ping</strong> — visibility: external, mutability: n/a
+          <br/>inputs:
+          uint256 n
+        </li>
+      
+        <li><strong>getCount</strong> — visibility: external, mutability: view
+          <br/>inputs:
+          
+        </li>
+      
+        <li><strong>getUserCount</strong> — visibility: external, mutability: view
+          <br/>inputs:
+          address user
+        </li>
+      
+        <li><strong>reset</strong> — visibility: external, mutability: n/a
+          <br/>inputs:
+          
+        </li>
+      
+        <li><strong>batchPing</strong> — visibility: external, mutability: n/a
+          <br/>inputs:
+          uint256[] amounts
+        </li>
+      
+    </ul>
+  
+
+  
+  
+
+  <h2>Findings (Slither)</h2>
+  
+  
+    
+  
+  
+    <p>No normalized findings (either none detected or Slither failed).</p>
+  
+
+  <h2>STRIDE Coverage</h2>
+  
+  
+    
+  
+  
+    <table>
+      <tr>
+        <th>Function</th>
+        <th>Spoofing</th>
+        <th>Tampering</th>
+        <th>Repudiation</th>
+        <th>Info Disclosure</th>
+        <th>DoS</th>
+        <th>EoP</th>
+      </tr>
+      
+      <tr>
+        <td>Sample.ping</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+      </tr>
+      
+      <tr>
+        <td>Sample.getCount</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+      </tr>
+      
+      <tr>
+        <td>Sample.getUserCount</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+      </tr>
+      
+      <tr>
+        <td>Sample.reset</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+      </tr>
+      
+      <tr>
+        <td>Sample.batchPing</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+      </tr>
+      
+    </table>
+  
+
+  <h2>Test Results</h2>
+  
+    <table>
+      <tr><th>Journey</th><th>Passed</th><th>Failed</th></tr>
+      
+        <tr><td>happy_Sample_getCount</td><td>3</td><td>0</td></tr>
+      
+        <tr><td>happy_Sample_ping</td><td>3</td><td>0</td></tr>
+      
+        <tr><td>happy_Sample_reset</td><td>3</td><td>0</td></tr>
+      
+        <tr><td>happy_Sample_getUserCount</td><td>3</td><td>0</td></tr>
+      
+        <tr><td>happy_Sample_batchPing</td><td>0</td><td>0</td></tr>
+      
+        <tr><td>stress_Sample_batchPing</td><td>0</td><td>0</td></tr>
+      
+        <tr><td></td><td></td><td></td></tr>
+      
+    </table>
+  
+
+  <h2>Top Gas</h2>
+  
+    <p>No gas data captured.</p>
+  
+
+  <h2>EoP Coverage</h2>
+  <p>Mode: <code>auto</code></p>
+  
+    <p>No EoP candidates in this run.</p>
+  
+
+  <h2>LLM Assertions</h2>
+  <p><b>Summary:</b> added 0, skipped 0, error 0.</p>
+  
+    <p>LLM disabled (reason: flag_off).</p>
+  
+
+<h2>Risk Overview</h2>
+
+
+<p>
+  <b>Overall:</b> 0.0
+  
+  &nbsp;&nbsp;<b>Grade:</b> Info
+</p>
+
+
+<p><b>Risk Profile:</b>
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      <span style="display:inline-block;padding:2px 6px;border-radius:10px;margin-right:4px;background:
+        #e6ffe6;">
+        Info: 5
+      </span>
+    
+  
+</p>
+
+
+
+<p><b>Risk Trend (last 1 runs):</b>
+  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNDAiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAxNDAgMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0icmlzayB0cmVuZCI+CiAgPHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIgogICAgcG9pbnRzPSI0LjAsMTIuMCIvPgo8L3N2Zz4=" alt="risk trend" style="vertical-align: middle; margin-left: 8px;" />
+  <br/>
+  <small style="color: #666;">
+    Latest: <b>0.0</b> • 
+    Min: <b>0.0</b> • 
+    Max: <b>0.0</b>
+  </small>
+</p>
+
+
+
+<h3>Top 10 Risky Functions</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>#</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th></tr>
+  
+    
+    
+    <tr>
+      <td>1</td>
+      <td>Sample.ping</td>
+      <td>0.0</td>
+      <td>
+        <span>0.0</span>
+      </td>
+      <td>Info</td>
+    </tr>
+  
+    
+    
+    <tr>
+      <td>2</td>
+      <td>Sample.getCount</td>
+      <td>0.0</td>
+      <td>
+        <span>0.0</span>
+      </td>
+      <td>Info</td>
+    </tr>
+  
+    
+    
+    <tr>
+      <td>3</td>
+      <td>Sample.getUserCount</td>
+      <td>0.0</td>
+      <td>
+        <span>0.0</span>
+      </td>
+      <td>Info</td>
+    </tr>
+  
+    
+    
+    <tr>
+      <td>4</td>
+      <td>Sample.reset</td>
+      <td>0.0</td>
+      <td>
+        <span>0.0</span>
+      </td>
+      <td>Info</td>
+    </tr>
+  
+    
+    
+    <tr>
+      <td>5</td>
+      <td>Sample.batchPing</td>
+      <td>0.0</td>
+      <td>
+        <span>0.0</span>
+      </td>
+      <td>Info</td>
+    </tr>
+  
+</table>
+
+
+<h2>Risk Heatmap</h2>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>Contract</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th><th>STRIDE</th></tr>
+  
+    
+    
+    <tr style="background: #e6ffe6;">
+      <td>Sample</td>
+      <td>ping</td>
+      <td>0.0</td>
+          <td>
+      
+      <span>0.0</span>
+    </td>
+      <td>Info</td>
+      <td>
+        
+      </td>
+    </tr>
+  
+    
+    
+    <tr style="background: #e6ffe6;">
+      <td>Sample</td>
+      <td>getCount</td>
+      <td>0.0</td>
+          <td>
+      
+      <span>0.0</span>
+    </td>
+      <td>Info</td>
+      <td>
+        
+      </td>
+    </tr>
+  
+    
+    
+    <tr style="background: #e6ffe6;">
+      <td>Sample</td>
+      <td>getUserCount</td>
+      <td>0.0</td>
+          <td>
+      
+      <span>0.0</span>
+    </td>
+      <td>Info</td>
+      <td>
+        
+      </td>
+    </tr>
+  
+    
+    
+    <tr style="background: #e6ffe6;">
+      <td>Sample</td>
+      <td>reset</td>
+      <td>0.0</td>
+          <td>
+      
+      <span>0.0</span>
+    </td>
+      <td>Info</td>
+      <td>
+        
+      </td>
+    </tr>
+  
+    
+    
+    <tr style="background: #e6ffe6;">
+      <td>Sample</td>
+      <td>batchPing</td>
+      <td>0.0</td>
+          <td>
+      
+      <span>0.0</span>
+    </td>
+      <td>Info</td>
+      <td>
+        
+      </td>
+    </tr>
+  
+</table>
+
+
+</body></html>

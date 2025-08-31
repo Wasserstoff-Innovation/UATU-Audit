@@ -54,10 +54,6 @@ sources/
 temp/
 tmp/
 
-# Generated reports and artifacts
-*.pdf
-*.html
-*.csv
 
 # JSON: ignore most, but keep schemas/configs/baselines
 *.json
@@ -70,10 +66,6 @@ tmp/
 !baseline/portfolio.*
 !baseline/*.history.json
 
-# Generated badges and visualizations
-*.svg
-!uatu-logo.svg
-!*.template.svg
 
 # Generated test files
 tests/

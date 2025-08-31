@@ -1,0 +1,509 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Uatu – Pay & Start Audit</title>
+<style>
+body {
+    font: 16px/1.4 system-ui;
+    background: #0b1b2b;
+    color: #e9eef3;
+    display: grid;
+    place-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.card {
+    background: #17293c;
+    border: 1px solid #1f3b57;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 520px;
+    box-shadow: 0 8px 40px #0008;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.card h2 {
+    margin: 0 0 20px 0;
+    color: #f7d046;
+    font-size: 24px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #a0aec0;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #294862;
+    background: #0f1f2f;
+    color: #e9eef3;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #f7d046;
+    box-shadow: 0 0 0 3px rgba(247, 208, 70, 0.1);
+}
+
+button {
+    background: #f7d046;
+    color: #0b1b2b;
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+    background: #f4c430;
+    transform: translateY(-1px);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button.secondary {
+    background: transparent;
+    color: #f7d046;
+    border: 1px solid #f7d046;
+}
+
+button.secondary:hover:not(:disabled) {
+    background: rgba(247, 208, 70, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.small {
+    opacity: 0.7;
+    font-size: 12px;
+    margin-top: 8px;
+    color: #a0aec0;
+}
+
+.status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+.status.success {
+    background: rgba(46, 125, 50, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(46, 125, 50, 0.3);
+}
+
+.status.error {
+    background: rgba(211, 47, 47, 0.2);
+    color: #f44336;
+    border: 1px solid rgba(211, 47, 47, 0.3);
+}
+
+.status.info {
+    background: rgba(2, 136, 209, 0.2);
+    color: #2196f3;
+    border: 1px solid rgba(2, 136, 209, 0.3);
+}
+
+.log {
+    background: #0f1f2f;
+    border: 1px solid #294862;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.log-entry {
+    margin-bottom: 4px;
+    padding: 2px 0;
+}
+
+.log-entry.timestamp {
+    color: #6e7781;
+}
+
+.log-entry.success {
+    color: #4caf50;
+}
+
+.log-entry.error {
+    color: #f44336;
+}
+
+.log-entry.info {
+    color: #2196f3;
+}
+
+.network-info {
+    background: rgba(247, 208, 70, 0.1);
+    border: 1px solid rgba(247, 208, 70, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+}
+
+.network-info h4 {
+    margin: 0 0 8px 0;
+    color: #f7d046;
+    font-size: 14px;
+}
+
+.network-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #a0aec0;
+}
+</style>
+
+<div class="card">
+    <h2>🚀 Start an Audit – $100</h2>
+    
+    <div class="form-group">
+        <label for="repo">Repository (owner/name)</label>
+        <input id="repo" placeholder="your-org/your-repo" value="uatu-audit/sample-contract">
+    </div>
+    
+    <div class="form-group">
+        <label for="sha">Commit SHA</label>
+        <input id="sha" placeholder="abcdef123..." value="a1b2c3d4e5f6">
+    </div>
+    
+    <div class="form-group">
+        <label for="branch">Branch (optional)</label>
+        <select id="branch">
+            <option value="">Select branch...</option>
+            <option value="main">main</option>
+            <option value="develop">develop</option>
+            <option value="feature/new-feature">feature/new-feature</option>
+        </select>
+    </div>
+    
+    <div class="network-info">
+        <h4>🌐 Network Information</h4>
+        <p><strong>Chain:</strong> Base (chainId 8453)</p>
+        <p><strong>Token:</strong> USDC (6 decimals)</p>
+        <p><strong>Price:</strong> 100 USDC per audit</p>
+        <p><strong>Contract:</strong> <span id="contract-address">Not deployed</span></p>
+    </div>
+    
+    <div class="button-group">
+        <button id="connect">🔗 Connect Wallet</button>
+        <button id="pay" disabled>💳 Approve & Pay</button>
+        <button id="check" disabled>🔍 Check Status</button>
+    </div>
+    
+    <div id="status" class="status info" style="display: none;">
+        Ready to connect wallet
+    </div>
+    
+    <div class="log" id="log">
+        <div class="log-entry timestamp">[System] Ready to start audit process...</div>
+    </div>
+</div>
+
+<script type="module">
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js";
+
+// Configuration - Update these with your deployed contract addresses
+const CONFIG = {
+    // Base Mainnet
+    CHAIN_ID: "0x2105", // 8453
+    CHAIN_NAME: "Base",
+    
+    // USDC on Base Mainnet
+    USDC_ADDRESS: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    
+    // Your deployed AuditOrders contract
+    ORDERS_ADDRESS: "0x0000000000000000000000000000000000000000", // TODO: Deploy and set
+    
+    // Contract ABIs
+    ABI_ERC20: [
+        "function approve(address,uint256) returns (bool)",
+        "function allowance(address,address) view returns (uint256)",
+        "function decimals() view returns (uint8)",
+        "function balanceOf(address) view returns (uint256)",
+        "function symbol() view returns (string)"
+    ],
+    ABI_ORDERS: [
+        "function price() view returns (uint256)",
+        "function payAndStart(string,string,bytes32)",
+        "function checkUserStatus(address) view returns (bool, bool)",
+        "function getOrderId(address,string,string,bytes32) view returns (bytes32)"
+    ]
+};
+
+// State
+let provider, signer, account;
+let usdcContract, ordersContract;
+
+// DOM elements
+const connectBtn = document.getElementById('connect');
+const payBtn = document.getElementById('pay');
+const checkBtn = document.getElementById('check');
+const statusDiv = document.getElementById('status');
+const logDiv = document.getElementById('log');
+const contractAddressSpan = document.getElementById('contract-address');
+
+// Logging
+function log(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+    logDiv.appendChild(entry);
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function updateStatus(message, type = 'info') {
+    statusDiv.textContent = message;
+    statusDiv.className = `status ${type}`;
+    statusDiv.style.display = 'block';
+}
+
+// Network validation
+async function ensureBase() {
+    if (!window.ethereum) {
+        throw new Error("No wallet detected. Please install MetaMask or another wallet.");
+    }
+    
+    const currentChain = await window.ethereum.request({ method: "eth_chainId" });
+    if (currentChain !== CONFIG.CHAIN_ID) {
+        log(`Switching to ${CONFIG.CHAIN_NAME}...`, 'info');
+        try {
+            await window.ethereum.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: CONFIG.CHAIN_ID }]
+            });
+            log(`Switched to ${CONFIG.CHAIN_NAME}`, 'success');
+        } catch (error) {
+            if (error.code === 4902) {
+                // Chain not added, add it
+                await window.ethereum.request({
+                    method: "wallet_addEthereumChain",
+                    params: [{
+                        chainId: CONFIG.CHAIN_ID,
+                        chainName: CONFIG.CHAIN_NAME,
+                        nativeCurrency: {
+                            name: "ETH",
+                            symbol: "ETH",
+                            decimals: 18
+                        },
+                        rpcUrls: ["https://mainnet.base.org"],
+                        blockExplorerUrls: ["https://basescan.org"]
+                    }]
+                });
+            } else {
+                throw error;
+            }
+        }
+    }
+}
+
+// Wallet connection
+connectBtn.onclick = async () => {
+    try {
+        log("Connecting wallet...", 'info');
+        updateStatus("Connecting wallet...", 'info');
+        
+        await ensureBase();
+        
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        account = await signer.getAddress();
+        
+        // Initialize contracts
+        usdcContract = new ethers.Contract(CONFIG.USDC_ADDRESS, CONFIG.ABI_ERC20, signer);
+        ordersContract = new ethers.Contract(CONFIG.ORDERS_ADDRESS, CONFIG.ABI_ORDERS, signer);
+        
+        // Check if contract is deployed
+        try {
+            const price = await ordersContract.price();
+            log(`Connected: ${account}`, 'success');
+            log(`Contract price: ${ethers.formatUnits(price, 6)} USDC`, 'info');
+            updateStatus(`Connected: ${account.slice(0, 6)}...${account.slice(-4)}`, 'success');
+            
+            connectBtn.disabled = true;
+            payBtn.disabled = false;
+            checkBtn.disabled = false;
+            
+            // Update contract address display
+            contractAddressSpan.textContent = CONFIG.ORDERS_ADDRESS;
+            
+        } catch (error) {
+            log(`Contract not deployed or invalid: ${error.message}`, 'error');
+            updateStatus("Contract not deployed. Please deploy AuditOrders.sol first.", 'error');
+        }
+        
+    } catch (error) {
+        log(`Connection failed: ${error.message}`, 'error');
+        updateStatus(`Connection failed: ${error.message}`, 'error');
+    }
+};
+
+// Check user status
+checkBtn.onclick = async () => {
+    if (!ordersContract || !account) {
+        updateStatus("Please connect wallet first", 'error');
+        return;
+    }
+    
+    try {
+        log("Checking user status...", 'info');
+        updateStatus("Checking status...", 'info');
+        
+        const [hasAllowance, hasBalance] = await ordersContract.checkUserStatus(account);
+        const balance = await usdcContract.balanceOf(account);
+        const symbol = await usdcContract.symbol();
+        
+        log(`Balance: ${ethers.formatUnits(balance, 6)} ${symbol}`, 'info');
+        log(`Allowance: ${hasAllowance ? 'Sufficient' : 'Insufficient'}`, hasAllowance ? 'success' : 'error');
+        log(`Balance: ${hasBalance ? 'Sufficient' : 'Insufficient'}`, hasBalance ? 'success' : 'error');
+        
+        if (hasAllowance && hasBalance) {
+            updateStatus("Ready to pay!", 'success');
+        } else if (!hasBalance) {
+            updateStatus("Insufficient USDC balance", 'error');
+        } else {
+            updateStatus("USDC approval needed", 'info');
+        }
+        
+    } catch (error) {
+        log(`Status check failed: ${error.message}`, 'error');
+        updateStatus(`Status check failed: ${error.message}`, 'error');
+    }
+};
+
+// Payment
+payBtn.onclick = async () => {
+    if (!ordersContract || !usdcContract || !account) {
+        updateStatus("Please connect wallet first", 'error');
+        return;
+    }
+    
+    const repo = document.getElementById("repo").value.trim();
+    const sha = document.getElementById("sha").value.trim();
+    const branch = document.getElementById("branch").value;
+    
+    if (!repo || !sha) {
+        updateStatus("Please enter repository and commit SHA", 'error');
+        return;
+    }
+    
+    try {
+        log("Starting payment process...", 'info');
+        updateStatus("Processing payment...", 'info');
+        
+        // Get price and check allowance
+        const price = await ordersContract.price();
+        const allowance = await usdcContract.allowance(account, CONFIG.ORDERS_ADDRESS);
+        
+        log(`Audit price: ${ethers.formatUnits(price, 6)} USDC`, 'info');
+        
+        if (allowance < price) {
+            log("Approving USDC...", 'info');
+            const approveTx = await usdcContract.approve(CONFIG.ORDERS_ADDRESS, price);
+            log(`Approve transaction: ${approveTx.hash}`, 'info');
+            
+            updateStatus("Waiting for approval confirmation...", 'info');
+            const approveReceipt = await approveTx.wait();
+            log(`Approved in block ${approiptReceipt.blockNumber}`, 'success');
+        }
+        
+        // Generate salt for idempotency
+        const salt = ethers.id(String(Date.now()) + Math.random());
+        
+        // Pay and start audit
+        log("Paying for audit...", 'info');
+        const payTx = await ordersContract.payAndStart(repo, sha, salt);
+        log(`Payment transaction: ${payTx.hash}`, 'info');
+        
+        updateStatus("Waiting for payment confirmation...", 'info');
+        const receipt = await payTx.wait();
+        
+        log(`Audit order confirmed in block ${receipt.blockNumber}`, 'success');
+        updateStatus("Payment successful! Audit queued.", 'success');
+        
+        // Get order ID
+        const orderId = await ordersContract.getOrderId(account, repo, sha, salt);
+        log(`Order ID: ${orderId}`, 'info');
+        
+        // Disable pay button to prevent double payment
+        payBtn.disabled = true;
+        payBtn.textContent = "✅ Paid";
+        
+    } catch (error) {
+        log(`Payment failed: ${error.message}`, 'error');
+        updateStatus(`Payment failed: ${error.message}`, 'error');
+    }
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    log("UatuAudit Wallet Demo initialized", 'info');
+    log("Please deploy AuditOrders.sol to Base network first", 'info');
+    log("Update CONFIG.ORDERS_ADDRESS with your deployed contract", 'info');
+    
+    // Check if wallet is already connected
+    if (window.ethereum && window.ethereum.selectedAddress) {
+        log("Wallet already connected, refreshing...", 'info');
+        connectBtn.click();
+    }
+});
+
+// Handle wallet changes
+if (window.ethereum) {
+    window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+            log("Wallet disconnected", 'info');
+            updateStatus("Wallet disconnected", 'info');
+            connectBtn.disabled = false;
+            payBtn.disabled = true;
+            checkBtn.disabled = true;
+        } else {
+            log(`Account changed to: ${accounts[0]}`, 'info');
+            if (provider) {
+                connectBtn.click(); // Refresh connection
+            }
+        }
+    });
+    
+    window.ethereum.on('chainChanged', (chainId) => {
+        log(`Network changed to: ${chainId}`, 'info');
+        if (provider) {
+            connectBtn.click(); // Refresh connection
+        }
+    });
+}
+</script>

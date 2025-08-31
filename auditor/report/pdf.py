@@ -1,58 +1,120 @@
 """
-PDF report generation for UatuAudit using WeasyPrint.
+PDF generation for UatuAudit reports.
 """
 
 import os
 from pathlib import Path
-from typing import Optional
-from weasyprint import HTML, CSS
+from typing import Dict, Any, Optional
+from jinja2 import Environment, FileSystemLoader
 
-def render_pdf(html_path: str, pdf_path: str, base_url: str = None) -> bool:
-    """Render HTML report to PDF using WeasyPrint."""
+def render_letterhead(context: Dict[str, Any], out_pdf: Path, base_url: Path) -> bool:
+    """
+    Render a professional PDF with letterhead and watermark.
+    
+    Args:
+        context: Template context data
+        out_pdf: Output PDF path
+        out_pdf: Base URL for static assets
+        
+    Returns:
+        True if successful, False otherwise
+    """
     try:
-        # Ensure output directory exists
-        pdf_path = Path(pdf_path)
-        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        # Setup Jinja2 environment
+        template_dir = Path(__file__).resolve().parent.parent / "templates" / "pdf"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("letterhead.html.j2")
         
-        # Set base URL for relative paths
-        if base_url is None:
-            base_url = str(Path(html_path).parent)
+        # Render HTML
+        html_output = template.render(**context)
         
-        # Load HTML and CSS
-        html = HTML(filename=html_path, base_url=base_url)
-        css_path = Path(__file__).parent / "print.css"
-        
-        if css_path.exists():
-            css = CSS(filename=str(css_path))
-            html.write_pdf(pdf_path, stylesheets=[css])
-        else:
-            # Fallback without custom CSS
-            html.write_pdf(pdf_path)
-        
-        return True
-        
+        # Try to generate PDF with WeasyPrint
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            
+            # Load CSS
+            css_file = Path(__file__).resolve().parent / "print-letter.css"
+            if css_file.exists():
+                css = CSS(filename=str(css_file))
+            else:
+                css = None
+            
+            # Generate PDF
+            font_config = FontConfiguration()
+            html_doc = HTML(string=html_output, base_url=str(base_url))
+            
+            html_doc.write_pdf(
+                out_pdf,
+                stylesheets=[css] if css else None,
+                font_config=font_config
+            )
+            
+            return True
+            
+        except ImportError:
+            print("⚠️  WeasyPrint not available, saving HTML instead")
+            # Fallback to HTML if WeasyPrint not available
+            html_path = out_pdf.with_suffix('.html')
+            html_path.write_text(html_output)
+            return False
+            
     except Exception as e:
-        print(f"Error rendering PDF: {e}")
+        print(f"❌ PDF generation failed: {e}")
         return False
 
-def render_portfolio_pdf(html_path: str, pdf_path: str, base_url: str = None) -> bool:
-    """Render portfolio HTML report to PDF."""
-    return render_pdf(html_path, pdf_path, base_url)
-
-def get_pdf_path(html_path: str) -> str:
-    """Get PDF path for a given HTML path."""
-    html_path = Path(html_path)
-    return str(html_path.with_suffix('.pdf'))
-
-def ensure_pdf_exists(html_path: str, base_url: str = None) -> Optional[str]:
-    """Ensure PDF exists, generate if it doesn't."""
-    html_path = Path(html_path)
-    pdf_path = get_pdf_path(html_path)
+def render_standard_pdf(context: Dict[str, Any], out_pdf: Path, base_url: Path) -> bool:
+    """
+    Render the standard PDF template.
     
-    if not Path(pdf_path).exists():
-        if render_pdf(str(html_path), pdf_path, base_url):
-            return pdf_path
-        else:
-            return None
-    
-    return pdf_path
+    Args:
+        context: Template context data
+        out_pdf: Output PDF path
+        base_url: Base URL for static assets
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Setup Jinja2 environment
+        template_dir = Path(__file__).resolve().parent.parent / "templates" / "pdf"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("report.html.j2")
+        
+        # Render HTML
+        html_output = template.render(**context)
+        
+        # Try to generate PDF with WeasyPrint
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            
+            # Load CSS
+            css_file = Path(__file__).resolve().parent / "print.css"
+            if css_file.exists():
+                css = CSS(filename=str(css_file))
+            else:
+                css = None
+            
+            # Generate PDF
+            font_config = FontConfiguration()
+            html_doc = HTML(string=html_output, base_url=str(base_url))
+            
+            html_doc.write_pdf(
+                out_pdf,
+                stylesheets=[css] if css else None,
+                font_config=font_config
+            )
+            
+            return True
+            
+        except ImportError:
+            print("⚠️  WeasyPrint not available, saving HTML instead")
+            # Fallback to HTML if WeasyPrint not available
+            html_path = out_pdf.with_suffix('.html')
+            html_path.write_text(html_output)
+            return False
+            
+    except Exception as e:
+        print(f"❌ PDF generation failed: {e}")
+        return False

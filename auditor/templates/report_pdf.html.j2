@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title or "UatuAudit Report" }}</title>
+  <meta name="color-scheme" content="dark light">
+  <link rel="stylesheet" href="{{ static_url('print.css') }}">
+  <style>
+    /* watermark (uses your mascot) */
+    .wm::before{
+      content:"";
+      position:fixed; inset:0; pointer-events:none;
+      background:
+        radial-gradient(900px 520px at 85% -5%, rgba(247,208,70,.06), transparent 45%),
+        radial-gradient(700px 500px at 0% 100%, rgba(26,82,153,.06), transparent 60%),
+        url('{{ static_url("uatu-mascot.png") }}') right -40px bottom -40px / 520px auto no-repeat;
+      opacity:.12; filter:blur(.2px);
+    }
+  </style>
+</head>
+<body class="wm">
+  <!-- Letterhead -->
+  <header class="letterhead">
+    <div class="lh-left">
+      <img src="{{ static_url('uatu-logo.png') }}" alt="UatuAudit" class="logo"/>
+      <div class="lh-txt">
+        <div class="lh-title">UatuAudit</div>
+        <div class="lh-sub">Smart Contract Security Audit</div>
+      </div>
+    </div>
+    <div class="lh-right">
+      <div><b>Report ID:</b> {{ run.id }}</div>
+      <div><b>Date:</b> {{ run.generated_at }}</div>
+      <div><b>Contract:</b> {{ run.contract_id }}</div>
+      <div><b>Version:</b> {{ meta.version }}</div>
+    </div>
+  </header>
+
+  <!-- Cover -->
+  <section class="cover">
+    <h1>{{ title or "Security Audit Report" }}</h1>
+    <div class="badge-wrap">
+      <img src="data:image/svg+xml;base64,{{ badge_svg_b64 }}" alt="{{ risk.summary.grade }} badge" class="badge"/>
+      <div class="score">{{ "%.1f"|format(risk.summary.overall) }}</div>
+      <div class="grade">{{ risk.summary.grade }}</div>
+      {% if sparkline_svg_b64 %}
+      <img class="spark" src="data:image/svg+xml;base64,{{ sparkline_svg_b64 }}" alt="Trend sparkline"/>
+      {% endif %}
+    </div>
+    <ul class="bullets">
+      <li>Deterministic risk score with baseline delta (Δ {{ "%.1f"|format(risk.summary.delta_overall or 0.0) }})</li>
+      <li>STRIDE coverage, tests & gas, static analysis summary</li>
+      <li>PR badge + trend, portfolio roll-ups</li>
+      <li>On-chain receipt: {{ receipt.tx_hash or "—" }}</li>
+    </ul>
+  </section>
+
+  <!-- Executive Summary -->
+  <h2>1. Executive Summary</h2>
+  <div class="grid">
+    <div class="panel">
+      <h3>Overall</h3>
+      <div class="metric big">{{ "%.1f"|format(risk.summary.overall) }}</div>
+      <div class="muted">Grade: <b>{{ risk.summary.grade }}</b></div>
+      <div class="muted">Δ vs baseline: {{ "%.1f"|format(risk.summary.delta_overall or 0.0) }}</div>
+      <div class="muted">Buckets: {{ risk.summary.buckets|tojson }}</div>
+    </div>
+    <div class="panel">
+      <h3>Highlights</h3>
+      <ul class="tight">
+        <li>{{ tests.summary.passed }} tests passed, {{ tests.summary.failed }} failed</li>
+        <li>{{ eop.total }} EoP candidates, {{ eop.tested }} tested</li>
+        <li>Static analysis: {{ static.mode }} ({{ static.findings|length }} findings)</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Recommendations</h3>
+      <ol class="tight">
+        {% for r in recommendations %}
+        <li>{{ r }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+
+  <!-- Heatmap -->
+  <h2>2. Risk Heatmap</h2>
+  <table class="tbl">
+    <thead><tr><th>Contract</th><th>Function</th><th>Score</th><th>Δ</th><th>STRIDE</th><th>Grade</th></tr></thead>
+    <tbody>
+    {% for row in risk.heatmap %}
+      <tr>
+        <td>{{ row.contract }}</td>
+        <td>{{ row.function }}</td>
+        <td class="mono">{{ "%.1f"|format(row.score) }}</td>
+        <td class="mono">{{ "%.1f"|format(row.delta or 0.0) }}</td>
+        <td>
+          {% if row.cats and row.cats|length %}
+            {% for c in row.cats %}<span class="chip">{{ c }}</span>{% endfor %}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ row.grade }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Findings -->
+  <h2>3. Findings</h2>
+  {% if findings and findings|length %}
+    {% for f in findings %}
+      <article class="finding">
+        <h3>{{ f.title }}</h3>
+        <div class="sev {{ f.severity|lower }}">{{ f.severity }}</div>
+        <p>{{ f.body }}</p>
+        {% if f.references %}<p class="muted">Refs: {{ f.references|join(", ") }}</p>{% endif %}
+      </article>
+    {% endfor %}
+  {% else %}
+    <p>No material findings in this run.</p>
+  {% endif %}
+
+  <!-- Tests -->
+  <h2>4. Tests & EoP Coverage</h2>
+  <p>{{ tests.summary.passed }} passed, {{ tests.summary.failed }} failed.
+     EoP candidates: {{ eop.total }}, Tested: {{ eop.tested }}, Mode: {{ eop.mode }}</p>
+
+  <!-- Gas -->
+  <h2>5. Gas & Performance</h2>
+  <table class="tbl">
+    <thead><tr><th>Test</th><th>Gas</th></tr></thead>
+    <tbody>
+      {% for g in gas.top %}<tr><td>{{ g.name }}</td><td class="mono">{{ g.gas }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Static -->
+  <h2>6. Static Analysis</h2>
+  <p>Mode: {{ static.mode }}, Findings: {{ static.findings|length }}</p>
+
+  <!-- Appendix -->
+  <h2>Appendix</h2>
+  <ul class="tight">
+    <li>Tool versions: {{ meta.tools|tojson }}</li>
+    <li>Config: {{ meta.config|tojson }}</li>
+    <li>Schema hashes: {{ meta.schemas|tojson }}</li>
+  </ul>
+
+  <footer class="foot">© {{ run.year }} UatuAudit • Confidential</footer>
+</body>
+</html>

@@ -1,0 +1,54 @@
+@page{
+  size: A4;
+  margin: 22mm 16mm 18mm 16mm;
+  @top-center{ content: element(doc-header) }
+  @bottom-center{ content: element(doc-footer) }
+}
+body{font:10pt/1.45 Inter,system-ui,sans-serif;color:#0e1a2a}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.muted{color:#5e738b}
+.tight{margin:.5em 0; padding-left:1.1em}
+h1,h2,h3{margin:.15cm 0}
+h1{font-size:22pt} h2{font-size:14pt} h3{font-size:11pt}
+
+.letterhead{position:running(doc-header); display:flex; justify-content:space-between;
+  border-bottom:2px solid #f7d046; padding:6px 0 8px 0}
+.lh-left{display:flex; gap:10px; align-items:center}
+.lh-logo{height:18px}
+.lh-title{font-weight:900; letter-spacing:.3px}
+.lh-sub{font-size:9pt; color:#5e738b}
+.lh-right{font-size:9pt; color:#334a63; text-align:right}
+.letterfoot{position:running(doc-footer); display:flex; justify-content:space-between;
+  border-top:1px solid #c7d3e2; color:#5e738b; padding:6px 0 0 0; font-size:8.5pt}
+
+.watermark{
+  position:fixed; top:45%; left:50%; transform:translate(-50%,-50%) rotate(-24deg);
+  font:900 120pt/1 Inter,system-ui,sans-serif; color:#f7d046; opacity:.06; z-index:-1; white-space:nowrap;
+}
+
+.cover{display:grid; grid-template-columns:1.2fr .8fr; gap:10mm; padding-top:10mm; padding-bottom:6mm; break-after:page}
+.cover h1{margin:0 0 4mm 0}
+.badges{margin-top:4mm}
+.badge{padding:6px 10px;border-radius:999px;font-weight:800;background:#0288d1;color:#0d1116;margin-right:6px}
+.pill{padding:3px 8px;border-radius:999px;border:1px solid #d7e2ee;color:#10233a;margin-right:4px;background:#f0f5fb}
+.badge.ready{background:#2e7d32}.badge.warn{background:#fbc02d}.badge.danger{background:#f57c00}.badge.crit{background:#d32f2f}
+
+.cover .score{font:900 54pt/1 Inter;color:#0e1a2a}
+.cover .grade{font-size:14pt;margin-top:6px}
+.cover .delta{font-size:10pt;color:#5e738b}
+.cover .delta.up{color:#f57c00}.cover .delta.down{color:#2e7d32}
+.cover .spark{width:100%; margin-top:6mm}
+
+.page{margin-top:8mm}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6mm}
+.panel{border:1px solid #d7e2ee;border-radius:8px;padding:5mm;background:#fafcff}
+table{width:100%;border-collapse:collapse;margin-top:4mm}
+table.compact th, table.compact td{border-bottom:1px solid #e3ecf6;padding:3mm 2mm}
+table.compact th{color:#5e738b; text-transform:uppercase; letter-spacing:.5px; font-size:8pt}
+table.compact td.num{text-align:right}
+table.zebra tbody tr:nth-child(even){background:#f6f9fd}
+.chip{display:inline-block; font-weight:700; font-size:8pt; padding:2px 6px; border-radius:999px; color:#0d1116}
+.chip.info{background:#2e7d32}.chip.low{background:#0288d1}.chip.medium{background:#fbc02d}.chip.high{background:#f57c00}.chip.critical{background:#d32f2f}
+.chip.stride{background:#10233a;color:#f7d046;border:1px solid #c7d3e2}
+.findings li{margin:3mm 0}
+.fx{display:flex;gap:6px;align-items:center}

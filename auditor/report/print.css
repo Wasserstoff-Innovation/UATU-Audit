@@ -1,343 +1,84 @@
-/* UatuAudit Print Styles for PDF Generation */
-
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
-
-/* Page Setup */
+/* Page setup */
 @page {
-    size: A4;
-    margin: 2cm;
-    @top-center {
-        content: "UatuAudit Security Report";
-        font-family: 'Noto Sans', sans-serif;
-        font-size: 10pt;
-        color: #666;
-    }
-    @bottom-center {
-        content: "Page " counter(page) " of " counter(pages);
-        font-family: 'Noto Sans', sans-serif;
-        font-size: 10pt;
-        color: #666;
-    }
+  size: A4;
+  margin: 22mm 18mm 20mm 18mm;
 }
+html { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+body { color: #102032; }
 
-/* Base Styles */
-* {
-    box-sizing: border-box;
+.letterhead{
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom:2px solid #f0f2f6; padding:12px 0 10px; margin-bottom:16px;
 }
+.logo{ width:28px; height:28px; border-radius:6px; }
+.lh-left{ display:flex; gap:10px; align-items:center }
+.lh-title{ font-weight:800; letter-spacing:.2px }
+.lh-sub{ font-size:12px; color:#5c6f83 }
+.lh-right{ text-align:right; font-size:11.5px; color:#394c62 }
 
-body {
-    font-family: 'Noto Sans', sans-serif;
-    font-size: 11pt;
-    line-height: 1.4;
-    color: #333;
-    background: white;
-    margin: 0;
-    padding: 0;
+.cover{ text-align:left; margin:24px 0 16px }
+.cover h1{ font-size:28px; margin:8px 0 10px }
+.badge-wrap{ display:flex; align-items:center; gap:10px; margin:6px 0 12px }
+.badge{ height:24px }
+.score{ font-weight:800; }
+.grade{ font-size:12px; color:#445d77 }
+.spark{ height:22px; margin-left:auto }
+
+h2{ margin:14px 0 8px; border-bottom:1px solid #ecf0f4; padding-bottom:4px }
+h3{ margin:8px 0 6px }
+.muted{ color:#5e748b; font-size:12px }
+.grid{ display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:10px }
+.panel{ border:1px solid #e8edf2; border-radius:8px; padding:10px }
+.metric.big{ font-size:24px; font-weight:800 }
+.tight{ margin:6px 0 0 18px; padding:0 }
+.tight>li{ margin:4px 0 }
+
+.tbl{ width:100%; border-collapse: collapse; font-size:12.5px }
+.tbl th, .tbl td{ border-bottom:1px solid #eef2f6; padding:8px 6px; text-align:left }
+.tbl th{ font-weight:700; color:#233d56; background:#fafcff }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace }
+
+.finding{ position:relative; border:1px solid #e9eef4; border-radius:8px; padding:10px; margin:10px 0 }
+.finding .sev{ position:absolute; right:10px; top:10px; font-size:11px; padding:2px 6px; border-radius:6px; color:#fff }
+.sev.critical{ background:#d32f2f } .sev.high{ background:#f57c00 }
+.sev.medium{ background:#fbc02d; color:#2e2e2e } .sev.low{ background:#0288d1 }
+.sev.info{ background:#2e7d32 }
+
+.foot{ position:fixed; bottom:10mm; left:18mm; right:18mm; font-size:11.5px; color:#5c6f83; text-align:center }
+
+/* New Letterhead Styles */
+.u-letterhead{
+  display:grid; grid-template-columns: 60px 1fr auto; column-gap:14px; align-items:center;
+  padding:0 0 10mm; border-bottom:2px solid color-mix(in srgb, #f7d046 70%, #6f8d2e 30%);
 }
+.u-logo{width:60px; filter: drop-shadow(0 2px 8px rgba(247,208,70,.25))}
+.u-brand h1{margin:0; font-weight:800; font-size:20pt}
+.u-brand div{color:#49627c}
+.u-meta{font-size:9.5pt; color:#3d556b; text-align:right; line-height:1.35}
 
-/* Cover Page */
-.cover-page {
-    page-break-after: always;
-    text-align: center;
-    padding: 4cm 2cm;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+/* Cover */
+body.u-cover{font-family:Inter, system-ui, sans-serif; color:#0b1b2b}
+.u-cover-main{padding:14mm 0 4mm}
+.u-cover-main h2{font-size:22pt; margin:0 0 6mm}
+.u-badges .badge{
+  display:inline-block; border-radius:8pt; padding:4pt 8pt; margin-right:6pt;
+  border:1pt solid rgba(11,27,43,.12); background:#f4f7fb; font-weight:700;
 }
+.badge-critical{background:#ffe0e0; border-color:#f2b4b4; color:#9b1b1b}
+.badge-high{background:#ffeacc; border-color:#f1c78e; color:#8b3f00}
+.badge-medium{background:#fff6c9; border-color:#e8d98f; color:#725b00}
+.badge-low{background:#e0f3ff; border-color:#9ecdea; color:#004d78}
+.badge-info{background:#e4f7e8; border-color:#a7dfb5; color:#1d6b2f}
+.badge-ready{background:color-mix(in srgb, #17c964 25%, #ffffff); border-color:#a7dfb5; color:#157657}
 
-.cover-logo {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 2cm;
+.u-points{margin:10mm 0 0; padding-left:5mm}
+.u-points li{margin:2.5mm 0}
+
+/* Watermark */
+.u-watermark{
+  position:fixed; inset:0; display:grid; place-items:center; z-index:-1; opacity:.06;
 }
-
-.cover-title {
-    font-size: 28pt;
-    font-weight: 700;
-    color: #2e7d32;
-    margin-bottom: 1cm;
-}
-
-.cover-subtitle {
-    font-size: 16pt;
-    font-weight: 500;
-    color: #666;
-    margin-bottom: 2cm;
-}
-
-.cover-badge {
-    display: inline-block;
-    padding: 1rem 2rem;
-    background: #2e7d32;
-    color: white;
-    border-radius: 8px;
-    font-size: 14pt;
-    font-weight: 600;
-    margin-bottom: 2cm;
-}
-
-.cover-meta {
-    text-align: left;
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-.cover-meta-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5cm;
-    padding: 0.25cm 0;
-    border-bottom: 1px solid #eee;
-}
-
-.cover-meta-label {
-    font-weight: 600;
-    color: #666;
-}
-
-.cover-meta-value {
-    color: #333;
-}
-
-/* Section Headers */
-h1, h2, h3 {
-    color: #2e7d32;
-    page-break-after: avoid;
-}
-
-h1 {
-    font-size: 18pt;
-    font-weight: 700;
-    margin: 1.5cm 0 1cm;
-    page-break-before: always;
-}
-
-h2 {
-    font-size: 14pt;
-    font-weight: 600;
-    margin: 1cm 0 0.5cm;
-}
-
-h3 {
-    font-size: 12pt;
-    font-weight: 600;
-    margin: 0.75cm 0 0.5cm;
-}
-
-/* Tables */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0.5cm 0;
-    page-break-inside: avoid;
-}
-
-thead {
-    display: table-header-group;
-}
-
-th, td {
-    padding: 0.5cm;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-    font-size: 10pt;
-}
-
-th {
-    background: #f5f5f5;
-    font-weight: 600;
-    color: #333;
-}
-
-/* Risk Badges */
-.risk-badge {
-    display: inline-block;
-    padding: 0.25cm 0.5cm;
-    border-radius: 4px;
-    color: white;
-    font-size: 9pt;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.risk-critical { background: #d32f2f; }
-.risk-high { background: #f57c00; }
-.risk-medium { background: #fbc02d; color: #333; }
-.risk-low { background: #0288d1; }
-.risk-info { background: #2e7d32; }
-
-/* Status Badges */
-.status-badge {
-    display: inline-block;
-    padding: 0.5cm 1cm;
-    border-radius: 6px;
-    color: white;
-    font-size: 10pt;
-    font-weight: 600;
-    text-align: center;
-    margin: 0.5cm 0;
-}
-
-.status-ready { background: #2e7d32; }
-.status-passed { background: #0288d1; }
-.status-fixes { background: #fbc02d; color: #333; }
-.status-dangerous { background: #f57c00; }
-.status-critical { background: #d32f2f; }
-
-/* Executive Summary */
-.executive-summary {
-    background: #f8f9fa;
-    padding: 1cm;
-    border-left: 4px solid #2e7d32;
-    margin: 1cm 0;
-    font-size: 11pt;
-    line-height: 1.5;
-}
-
-/* Risk Heatmap */
-.risk-heatmap {
-    margin: 1cm 0;
-}
-
-.risk-heatmap table {
-    font-size: 9pt;
-}
-
-.risk-heatmap th {
-    background: #2e7d32;
-    color: white;
-}
-
-/* Test Results */
-.test-results {
-    margin: 1cm 0;
-}
-
-.test-pass {
-    color: #2e7d32;
-    font-weight: 600;
-}
-
-.test-fail {
-    color: #d32f2f;
-    font-weight: 600;
-}
-
-/* Gas Overview */
-.gas-overview {
-    background: #e3f2fd;
-    padding: 1cm;
-    border-radius: 6px;
-    margin: 1cm 0;
-}
-
-.gas-high {
-    color: #f57c00;
-    font-weight: 600;
-}
-
-.gas-medium {
-    color: #fbc02d;
-    font-weight: 600;
-}
-
-.gas-low {
-    color: #2e7d32;
-    font-weight: 600;
-}
-
-/* EoP Coverage */
-.eop-coverage {
-    margin: 1cm 0;
-}
-
-.eop-item {
-    padding: 0.5cm;
-    margin: 0.25cm 0;
-    border-left: 3px solid #2e7d32;
-    background: #f8f9fa;
-}
-
-/* LLM Section */
-.llm-section {
-    background: #f3e5f5;
-    padding: 1cm;
-    border-radius: 6px;
-    margin: 1cm 0;
-}
-
-.llm-disabled {
-    color: #666;
-    font-style: italic;
-}
-
-/* Conclusions */
-.conclusions {
-    background: #fff3e0;
-    padding: 1cm;
-    border-radius: 6px;
-    margin: 1cm 0;
-    border-left: 4px solid #f57c00;
-}
-
-/* Appendix */
-.appendix {
-    margin-top: 2cm;
-    padding-top: 1cm;
-    border-top: 2px solid #eee;
-    font-size: 9pt;
-    color: #666;
-}
-
-.appendix h3 {
-    color: #666;
-    font-size: 11pt;
-}
-
-.appendix table {
-    font-size: 8pt;
-}
-
-/* Page Breaks */
-.page-break {
-    page-break-before: always;
-}
-
-.no-break {
-    page-break-inside: avoid;
-}
-
-/* Print-specific */
-@media print {
-    .no-print {
-        display: none;
-    }
-    
-    a {
-        color: #2e7d32;
-        text-decoration: none;
-    }
-    
-    .cover-page {
-        page-break-after: always;
-    }
-}
+.u-watermark img{width:65%; max-width:520pt}
 
 /* Footer */
-.report-footer {
-    margin-top: 2cm;
-    padding-top: 1cm;
-    border-top: 1px solid #eee;
-    text-align: center;
-    font-size: 9pt;
-    color: #666;
-}
-
-.report-footer .uatu-logo {
-    width: 32px;
-    height: 32px;
-    display: inline-block;
-    margin: 0 0.5cm;
-    vertical-align: middle;
-}
+.u-footer{position:fixed; bottom:10mm; left:18mm; right:18mm; color:#3d556b; font-size:9pt; text-align:center}

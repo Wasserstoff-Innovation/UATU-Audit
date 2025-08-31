@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{{ contract_id }} — UatuAudit Report</title>
+  <link rel="stylesheet" href="print-letter.css">
+</head>
+<body>
+
+<!-- Running header & footer -->
+<header id="doc-header" class="letterhead">
+  <div class="lh-left">
+    <img src="logo.png" alt="Uatu" class="lh-logo">
+    <div>
+      <div class="lh-title">UatuAudit</div>
+      <div class="lh-sub">Smart Contract Security Report</div>
+    </div>
+  </div>
+  <div class="lh-right">
+    <div><b>Contract:</b> {{ contract_id }}</div>
+    <div><b>Generated:</b> {{ generated_at }}</div>
+  </div>
+</header>
+<footer id="doc-footer" class="letterfoot">
+  <div>© {{ year }} UatuAudit</div>
+  <div>uatu.audit • report id: {{ report_id or '-' }}</div>
+</footer>
+
+<!-- Global watermark -->
+<div class="watermark">UatuAudit</div>
+
+<!-- Cover block (first page area) -->
+<section class="cover">
+  <div class="cover-left">
+    <h1>{{ contract_id }}</h1>
+    <p class="muted mono">{{ commit or '' }}</p>
+    <div class="badges">
+      <span class="badge {{ primary_badge.css }}">{{ primary_badge.label }}</span>
+      {% for b in secondary_badges %}
+        <span class="pill {{ b.css }}">{{ b.label }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="cover-right">
+    <div class="score">{{ "%.1f"|format(summary.overall) }}</div>
+    <div class="grade">{{ summary.grade }}</div>
+    <div class="delta {% if summary.delta_overall>0 %}up{% elif summary.delta_overall<0 %}down{% endif %}">
+      Δ {{ "%.1f"|format(summary.delta_overall or 0) }}
+    </div>
+    {% if sparkline_data_uri %}
+      <img class="spark" src="{{ sparkline_data_uri }}" alt="trend">
+    {% endif %}
+  </div>
+</section>
+
+<!-- Exec Summary -->
+<section class="page">
+  <h2>Executive Summary</h2>
+  <div class="grid-3">
+    <div class="panel">
+      <h3>Risk</h3>
+      <ul>
+        <li>Score: {{ "%.1f"|format(summary.overall) }} ({{ summary.grade }})</li>
+        <li>Δ vs baseline: {{ "%.1f"|format(summary.delta_overall or 0) }}</li>
+        <li>Buckets: C {{ summary.buckets.Critical }} / H {{ summary.buckets.High }} / M {{ summary.buckets.Medium }} / L {{ summary.buckets.Low }} / I {{ summary.buckets.Info }}</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Tests</h3>
+      <ul>
+        <li>Passed: {{ tests.passed|default(0) }} / {{ tests.total|default(0) }}</li>
+        <li>EoP: {{ eop.covered|default(0) }} / {{ eop.total|default(0) }}</li>
+        <li>LLM: {{ llm.status|default('off') }}</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Static & Gas</h3>
+      <ul>
+        <li>Static: {{ static.status|default('ok') }} ({{ static.findings|default(0) }} findings)</li>
+        <li>Top gas: {{ gas.top_fn|default('-') }} ({{ gas.top_val|default('-') }})</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Top Risks -->
+<section class="page">
+  <h2>Top Risky Functions</h2>
+  <table class="compact">
+    <thead><tr><th>Contract</th><th>Function</th><th class="num">Score</th><th>Grade</th><th class="num">Δ</th><th>STRIDE</th></tr></thead>
+    <tbody>
+      {% for row in risk_top %}
+        <tr>
+          <td class="mono">{{ row.contract }}</td>
+          <td class="mono">{{ row.function }}</td>
+          <td class="num">{{ "%.1f"|format(row.score) }}</td>
+          <td><span class="chip {{ row.grade|lower }}">{{ row.grade }}</span></td>
+          <td class="num">{{ "%.1f"|format(row.delta or 0) }}</td>
+          <td>
+            {% for cat in row.cats %}
+              <span class="chip stride">{{ cat }}</span>
+            {% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<!-- Heatmap -->
+<section class="page">
+  <h2>Risk Heatmap</h2>
+  <table class="compact zebra">
+    <thead><tr><th>Contract</th><th>Function</th><th class="num">Score</th><th>Grade</th><th class="num">Δ</th><th>STRIDE</th></tr></thead>
+    <tbody>
+      {% for row in risk_heatmap %}
+        <tr>
+          <td class="contract">{{ row.contract }}</td>
+          <td class="function">{{ row.function }}</td>
+          <td class="num">{{ "%.1f"|format(row.score) }}</td>
+          <td><span class="chip {{ row.grade|lower }}">{{ row.grade }}</span></td>
+          <td class="num">{{ "%.1f"|format(row.delta or 0) }}</td>
+          <td>{% for cat in row.cats %}<span class="chip stride">{{ cat }}</span>{% endfor %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<!-- Findings -->
+<section class="page">
+  <h2>Findings</h2>
+  {% if findings and findings|length > 0 %}
+    <ol class="findings">
+      {% for f in findings %}
+        <li>
+          <div class="fx">
+            <span class="chip {{ f.severity|lower }}">{{ f.severity }}</span>
+            <b>{{ f.title }}</b>
+          </div>
+          <p class="muted">{{ f.description }}</p>
+          {% if f.recommendation %}
+            <p><b>Recommendation:</b> {{ f.recommendation }}</p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="muted">No explicit findings beyond the automated signals.</p>
+  {% endif %}
+</section>
+
+<!-- Appendix -->
+<section class="page">
+  <h2>Appendix</h2>
+  <ul class="tight">
+    <li>Auditor version: {{ versions.tool }}</li>
+    <li>CI mode: {{ modes }}</li>
+    <li>Commit: <span class="mono">{{ audit_commit }}</span></li>
+    <li>Schema hashes: <span class="mono">{{ schema_hashes|join(', ') }}</span></li>
+  </ul>
+</section>
+
+</body>
+</html>

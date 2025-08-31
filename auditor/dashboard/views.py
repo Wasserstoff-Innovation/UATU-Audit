@@ -1,79 +1,81 @@
 """
-Dashboard views and routes for UatuAudit.
+Dashboard views for UatuAudit.
 """
 
 import os
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
 from fastapi import Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from .security import login_required, get_current_user, set_user_session, clear_user_session
-from .auth import github_login, github_callback
+from .security import get_current_user
 from .run_indexer import RunIndexer
 
 # Setup templates
 templates = Jinja2Templates(directory="auditor/dashboard/templates")
 
 # Setup run indexer
-indexer = RunIndexer(cache_ttl=int(os.getenv('DASHBOARD_CACHE_TTL', '10')))
+indexer = RunIndexer()
 
 def get_grade_color(grade: str) -> str:
     """Get color for risk grade."""
     colors = {
         "Critical": "#d32f2f",
-        "High": "#f57c00",
+        "High": "#f57c00", 
         "Medium": "#fbc02d",
         "Low": "#0288d1",
         "Info": "#2e7d32",
+        "Unknown": "#6e7781"
     }
     return colors.get(grade, "#6e7781")
 
+async def landing_page(request: Request):
+    """Landing page with Uatu branding and wallet integration."""
+    return templates.TemplateResponse("landing.html", {
+        "request": request,
+        "year": datetime.now().year
+    })
+
 async def login_page(request: Request):
     """Login page."""
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {
+        "request": request
+    })
 
 async def github_auth(request: Request):
     """Initiate GitHub OAuth."""
+    from .auth import github_login
     return await github_login(request)
 
 async def auth_callback(request: Request):
-    """Handle OAuth callback."""
-    user_info = await github_callback(request)
-    if user_info:
-        set_user_session(request, user_info)
-        return templates.TemplateResponse("redirect.html", {
-            "request": request,
-            "message": "Login successful! Redirecting...",
-            "redirect_url": "/"
-        })
-    else:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "Authentication failed. Please try again."
-        })
+    """Handle GitHub OAuth callback."""
+    from .auth import github_callback as gh_callback
+    return await gh_callback(request)
 
 async def logout(request: Request):
     """Logout user."""
+    from .security import clear_user_session
     clear_user_session(request)
-    return templates.TemplateResponse("redirect.html", {
-        "request": request,
-        "message": "Logged out successfully! Redirecting...",
-        "redirect_url": "/login"
-    })
+    return RedirectResponse(url="/login")
 
-@login_required
 async def runs_page(request: Request):
-    """Main runs listing page."""
+    """Main runs listing page - requires authentication."""
     user = get_current_user(request)
+    
+    # Redirect to login if not authenticated
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=302)
+    
+    # Get filter parameters
+    grade_filter = request.query_params.get("grade", "")
+    kind_filter = request.query_params.get("kind", "")
+    search_query = request.query_params.get("search", "")
+    
+    # Get all runs
     runs = indexer.scan_runs()
     
     # Apply filters
-    grade_filter = request.query_params.get('grade', '')
-    kind_filter = request.query_params.get('kind', '')
-    search_query = request.query_params.get('search', '')
-    
     filtered_runs = runs
     if grade_filter:
         filtered_runs = [r for r in filtered_runs if r['grade'] == grade_filter]
@@ -98,10 +100,15 @@ async def runs_page(request: Request):
         "get_grade_color": get_grade_color
     })
 
-@login_required
 async def run_detail(request: Request, ts: str):
-    """Individual run detail page."""
+    """Individual run detail page - requires authentication."""
     user = get_current_user(request)
+    
+    # Redirect to login if not authenticated
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=302)
+    
     run = indexer.get_run_by_ts(ts)
     
     if not run:
@@ -114,10 +121,15 @@ async def run_detail(request: Request, ts: str):
         "get_grade_color": get_grade_color
     })
 
-@login_required
 async def portfolio_page(request: Request):
-    """Portfolio overview page."""
+    """Portfolio overview page - requires authentication."""
     user = get_current_user(request)
+    
+    # Redirect to login if not authenticated
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=302)
+    
     portfolio = indexer.scan_portfolio()
     
     if not portfolio:
@@ -135,9 +147,15 @@ async def portfolio_page(request: Request):
         "get_grade_color": get_grade_color
     })
 
-@login_required
 async def download_pdf(request: Request, ts: str):
-    """Download PDF for a run."""
+    """Download PDF for a run - requires authentication."""
+    user = get_current_user(request)
+    
+    # Redirect to login if not authenticated
+    if not user:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login", status_code=302)
+    
     run = indexer.get_run_by_ts(ts)
     if not run or not run.get('report_pdf'):
         raise HTTPException(status_code=404, detail="PDF not found")
@@ -152,7 +170,6 @@ async def download_pdf(request: Request, ts: str):
         filename=f"audit-{ts}.pdf"
     )
 
-@login_required
 async def download_portfolio_pdf(request: Request):
     """Download portfolio PDF."""
     portfolio = indexer.scan_portfolio()
@@ -169,7 +186,6 @@ async def download_portfolio_pdf(request: Request):
         filename=f"portfolio-{portfolio['ts']}.pdf"
     )
 
-@login_required
 async def download_csv(request: Request):
     """Download portfolio CSV."""
     portfolio = indexer.scan_portfolio()
@@ -188,4 +204,4 @@ async def download_csv(request: Request):
 
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "uatu-dashboard"}
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}

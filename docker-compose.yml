@@ -3,7 +3,8 @@ version: '3.8'
 services:
   dashboard:
     image: contract-auditor:prod
-    command: uvicorn auditor.dashboard.server:app --host 0.0.0.0 --port 8080
+    entrypoint: []
+    command: ["python", "-m", "uvicorn", "auditor.dashboard.server:app", "--host", "0.0.0.0", "--port", "8080"]
     ports:
       - "8080:8080"
     environment:
@@ -14,6 +15,8 @@ services:
       ALLOWED_GH_ORGS: "${ALLOWED_GH_ORGS:-}"
       ALLOWED_EMAILS: "${ALLOWED_EMAILS:-}"
       DASHBOARD_CACHE_TTL: "${DASHBOARD_CACHE_TTL:-10}"
+      AUDITS_ROOT: "audits"
+      EXTRA_ROOTS: "out"
     volumes:
       - ./:/work:ro  # read-only bind in production
     working_dir: /work

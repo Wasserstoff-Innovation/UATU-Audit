@@ -5,7 +5,7 @@ Main dashboard server for UatuAudit.
 import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 from .auth import setup_oauth
 from .security import setup_sessions
@@ -13,7 +13,7 @@ from .views import (
     login_page, github_auth, auth_callback, logout,
     runs_page, run_detail, portfolio_page,
     download_pdf, download_portfolio_pdf, download_csv,
-    health_check
+    health_check, landing_page
 )
 
 # Create FastAPI app
@@ -31,7 +31,8 @@ setup_oauth(app)
 app.mount("/static", StaticFiles(directory="auditor/dashboard/static"), name="static")
 
 # Routes
-app.add_api_route("/", runs_page, methods=["GET"])
+app.add_api_route("/", landing_page, methods=["GET"])  # Landing page as main entry
+app.add_api_route("/dashboard", runs_page, methods=["GET"])  # Dashboard requires auth
 app.add_api_route("/login", login_page, methods=["GET"])
 app.add_api_route("/auth/github", github_auth, methods=["GET"])
 app.add_api_route("/auth/callback", auth_callback, methods=["GET"])

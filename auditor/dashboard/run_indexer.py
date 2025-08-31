@@ -27,19 +27,33 @@ class RunIndexer:
             return self.cached_runs
         
         runs = []
-        out_dir = Path(base_path) / "out"
+        base_path_obj = Path(base_path)
         
-        if not out_dir.exists():
-            return []
+        # Get audit roots from environment
+        audits_root = os.getenv('AUDITS_ROOT', 'audits')
+        extra_roots = os.getenv('EXTRA_ROOTS', 'out').split(':')
         
-        # Scan individual audit runs
-        for run_dir in sorted(out_dir.iterdir(), reverse=True):
-            if not run_dir.is_dir():
+        # Scan all roots
+        all_roots = [audits_root] + extra_roots
+        
+        for root_name in all_roots:
+            root_dir = base_path_obj / root_name
+            if not root_dir.exists():
                 continue
+                
+            print(f"🔍 Scanning audit root: {root_name}")
             
-            run_data = self._index_run(run_dir)
-            if run_data:
-                runs.append(run_data)
+            # Scan individual audit runs in this root
+            for run_dir in sorted(root_dir.iterdir(), reverse=True):
+                if not run_dir.is_dir():
+                    continue
+                
+                run_data = self._index_run(run_dir, root_name)
+                if run_data:
+                    runs.append(run_data)
+        
+        # Sort all runs by timestamp (newest first)
+        runs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
         # Cache the results
         self.cached_runs = runs
@@ -81,7 +95,7 @@ class RunIndexer:
         
         return portfolio_data
     
-    def _index_run(self, run_dir: Path) -> Optional[Dict[str, Any]]:
+    def _index_run(self, run_dir: Path, root_name: str) -> Optional[Dict[str, Any]]:
         """Index a single audit run."""
         try:
             # Extract timestamp from directory name
@@ -131,7 +145,8 @@ class RunIndexer:
                 'has_html': report_html.exists(),
                 'risk_file': str(risk_file),
                 'report_html': str(report_html),
-                'report_pdf': str(report_pdf) if report_pdf.exists() else None
+                'report_pdf': str(report_pdf) if report_pdf.exists() else None,
+                'timestamp': datetime.now().isoformat() # Add timestamp for sorting
             }
             
         except Exception as e:

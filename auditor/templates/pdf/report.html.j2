@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{{ title or "UatuAudit Report" }}</title>
+  <link rel="stylesheet" href="{{ static_url('print.css') }}">
+  <style>
+    :root{
+      --ink:#0b1b2b; --slate:#17293c; --edge:#1f3b57; --glow:#f7d046;
+      --ready:#2e7d32; --pass:#0288d1; --warn:#fbc02d; --risk:#f57c00; --crit:#d32f2f; --muted:#9cb3c9;
+      --paper:#0b0f14; --panel:#111824;
+    }
+  </style>
+</head>
+<body class="uatu">
+
+<!-- COVER -->
+<section class="cover page-full">
+  <div class="cover-halo"></div>
+  <div class="cover-header">
+    <div class="uatu-logo">🦉</div>
+    <div>
+      <h1>UatuAudit</h1>
+      <h2>{{ report_kind|default('Contract Security Audit') }}</h2>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div class="meta-box">
+      <div class="k">Contract</div>
+      <div class="v">{{ contract_id|default('Unknown') }}</div>
+    </div>
+    <div class="meta-box">
+      <div class="k">Commit</div>
+      <div class="v mono">{{ commit|default('N/A')|truncate(12, True, '…') }}</div>
+    </div>
+    <div class="meta-box">
+      <div class="k">Generated</div>
+      <div class="v">{{ generated_at|default('Unknown') }}</div>
+    </div>
+  </div>
+
+  <div class="badges">
+    {% if primary_badge %}
+      <span class="badge {{ primary_badge.css }}">{{ primary_badge.label }}</span>
+    {% endif %}
+    {% for b in secondary_badges or [] %}
+      <span class="pill {{ b.css }}">{{ b.label }}</span>
+    {% endfor %}
+  </div>
+
+  <div class="score-card">
+    <div class="score">{{ "%.1f"|format(summary.overall|default(0)) }}</div>
+    <div class="grade">{{ summary.grade|default('Info') }}</div>
+    {% if summary.delta_overall is defined %}
+      <div class="delta {% if summary.delta_overall > 0 %}up{% elif summary.delta_overall < 0 %}down{% endif %}">
+        Δ {{ "%.1f"|format(summary.delta_overall) }}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if sparkline_data_uri %}
+    <div class="sparkline">
+      <img src="{{ sparkline_data_uri }}" alt="trend">
+    </div>
+  {% endif %}
+</section>
+
+<!-- EXEC SUMMARY -->
+<section class="page">
+  <h3>Executive Summary</h3>
+  <div class="grid-3">
+    <div class="panel">
+      <h4>Risk Overview</h4>
+      <ul class="tight">
+        <li><b>Score:</b> {{ "%.1f"|format(summary.overall|default(0)) }} ({{ summary.grade|default('Info') }})</li>
+        {% if summary.delta_overall is defined %}
+          <li><b>Δ vs baseline:</b> {{ "%.1f"|format(summary.delta_overall) }}</li>
+        {% endif %}
+        {% if summary.buckets %}
+          <li><b>Buckets:</b> Critical {{ summary.buckets.Critical|default(0) }}, High {{ summary.buckets.High|default(0) }}, Medium {{ summary.buckets.Medium|default(0) }}, Low {{ summary.buckets.Low|default(0) }}, Info {{ summary.buckets.Info|default(0) }}</li>
+        {% endif %}
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Tests</h4>
+      <ul class="tight">
+        <li><b>Passed:</b> {{ tests.passed|default(0) }} / {{ tests.total|default(0) }}</li>
+        <li><b>EoP coverage:</b> {{ eop.covered|default(0) }} / {{ eop.total|default(0) }}</li>
+        <li><b>LLM:</b> {{ llm.status|default("off") }}</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Static & Gas</h4>
+      <ul class="tight">
+        <li><b>Static:</b> {{ static.status|default("ok") }}</li>
+        <li><b>Top gas:</b> {{ gas.top_fn|default("-") }} ({{ gas.top_val|default("-") }})</li>
+        <li><b>Warnings:</b> {{ static.findings|default(0) }}</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- TOP RISKY FUNCTIONS -->
+{% if risk_top and risk_top|length > 0 %}
+<section class="page">
+  <h3>Top Risky Functions</h3>
+  <table class="compact">
+    <thead>
+      <tr>
+        <th>Contract</th><th>Function</th><th class="num">Score</th><th>Grade</th><th class="num">Δ</th><th>STRIDE</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in risk_top %}
+      <tr>
+        <td class="mono">{{ row.contract|default('Unknown') }}</td>
+        <td class="mono">{{ row.function|default('Unknown') }}</td>
+        <td class="num">{{ "%.1f"|format(row.score|default(0)) }}</td>
+        <td><span class="chip {{ (row.grade|default('Info'))|lower }}">{{ row.grade|default('Info') }}</span></td>
+        <td class="num">{{ "%.1f"|format(row.delta|default(0)) }}</td>
+        <td>
+          {% for cat in row.cats or [] %}
+            <span class="stride chip">{{ cat }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<!-- HEATMAP -->
+{% if risk_heatmap and risk_heatmap|length > 0 %}
+<section class="page">
+  <h3>Risk Heatmap</h3>
+  <table class="compact zebra">
+    <thead>
+      <tr>
+        <th>Contract</th><th>Function</th><th class="num">Score</th><th>Grade</th><th class="num">Δ</th><th>STRIDE</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in risk_heatmap %}
+      <tr>
+        <td class="mono">{{ row.contract|default('Unknown') }}</td>
+        <td class="mono">{{ row.function|default('Unknown') }}</td>
+        <td class="num">{{ "%.1f"|format(row.score|default(0)) }}</td>
+        <td><span class="chip {{ (row.grade|default('Info'))|lower }}">{{ row.grade|default('Info') }}</span></td>
+        <td class="num">{{ "%.1f"|format(row.delta|default(0)) }}</td>
+        <td>
+          {% for cat in row.cats or [] %}
+            <span class="stride chip">{{ cat }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<!-- TESTS -->
+<section class="page">
+  <h3>Tests & Coverage</h3>
+  <div class="grid-2">
+    <div class="panel">
+      <h4>Summary</h4>
+      <ul class="tight">
+        <li>Passed: {{ tests.passed|default(0) }} / {{ tests.total|default(0) }}</li>
+        <li>Journeys: {{ tests.journeys|default(0) }}</li>
+        <li>EoP candidates: {{ eop.total|default(0) }} (covered {{ eop.covered|default(0) }})</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Notes</h4>
+      <p class="muted">LLM assertions are compile-prechecked and appended only if they build. Failures are reverted automatically.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FINDINGS -->
+{% if findings and findings|length > 0 %}
+<section class="page">
+  <h3>Findings & STRIDE</h3>
+  <ol>
+    {% for f in findings %}
+      <li>
+        <b>{{ f.title }}</b> — <span class="chip {{ f.severity|lower }}">{{ f.severity }}</span><br/>
+        <span class="muted">{{ f.description }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+{% else %}
+<section class="page">
+  <h3>Findings & STRIDE</h3>
+  <p class="muted">No explicit findings beyond risk scoring inputs.</p>
+</section>
+{% endif %}
+
+<!-- APPENDIX -->
+<section class="page">
+  <h3>Appendix</h3>
+  <ul class="tight">
+    <li>Auditor version: {{ versions.tool|default('Unknown') }}</li>
+    <li>Mode: {{ modes|default('Standard') }}</li>
+    {% if audit_commit %}
+      <li>Commit: <span class="mono">{{ audit_commit }}</span></li>
+    {% endif %}
+    {% if schema_hashes %}
+      <li>Schema hashes: <span class="mono">{{ schema_hashes|join(', ') }}</span></li>
+    {% endif %}
+  </ul>
+  <p class="footer">© {{ year|default(2025) }} UatuAudit • Generated {{ generated_at|default('Unknown') }}</p>
+</section>
+
+</body>
+</html>

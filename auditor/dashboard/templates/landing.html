@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UatuAudit — Ship with certainty</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      /* Designer-grade color tokens */
+      --ink-navy:#0B1B2B;        /* Page background */
+      --deep-slate:#132335;      /* Cards/nav */
+      --slate-300:#A5B3C3;       /* Muted text */
+      --slate-100:#E7EEF6;       /* Body text on dark */
+      --white:#F7F9FC;           /* Headlines */
+      --gold:#F7D046;            /* Primary accent */
+      --aurora-green:#34F1A1;    /* Positive/ON */
+      --teal:#27C0C9;            /* Links/secondary */
+      --amber:#FFB547;           /* Warn */
+      --red:#D93D47;             /* Error */
+      
+      /* Gradients */
+      --grad-aurora:radial-gradient(closest-side, var(--aurora-green), transparent);
+      --grad-gold:linear-gradient(90deg, #FCE38A, var(--gold));
+      --grad-aurora-glow:radial-gradient(600px 400px at 50% 50%, rgba(52,241,161,.15), transparent 60%);
+      --grad-gold-glow:radial-gradient(400px 300px at 50% 50%, rgba(247,208,70,.2), transparent 60%);
+      
+      /* Typography */
+      --font-display:'Space Grotesk', system-ui, sans-serif;
+      --font-body:'Inter', system-ui, sans-serif;
+      --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+      
+      /* Spacing & layout */
+      --max-width:1240px;
+      --gutter:24px;
+      --radius:12px;
+      --focus-ring:0 0 0 2px var(--aurora-green), 0 0 0 3px var(--deep-slate);
+      
+      /* Shadows & effects */
+      --shadow-card:0 4px 20px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.05);
+      --shadow-float:0 8px 32px rgba(0,0,0,.25);
+      --border-hairline:1px solid #233447;
+    }
+    /* Global reset & foundation */
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; padding:0}
+    body{
+      font-family:var(--font-body); color:var(--slate-100); background:var(--ink-navy);
+      line-height:1.5; font-weight:400; -webkit-font-smoothing:antialiased;
+    }
+    
+    /* Typography scale */
+    h1{font-family:var(--font-display); font-size:52px; line-height:1.2; font-weight:600; color:var(--white); margin:0 0 24px}
+    h2{font-family:var(--font-display); font-size:40px; line-height:1.2; font-weight:600; color:var(--white); margin:0 0 24px}
+    h3{font-family:var(--font-display); font-size:28px; line-height:1.2; font-weight:600; color:var(--white); margin:0 0 12px}
+    h4{font-family:var(--font-display); font-size:20px; line-height:1.2; font-weight:600; color:var(--white); margin:0 0 12px}
+    p{font-size:16px; line-height:1.5; margin:0 0 24px; color:var(--slate-100)}
+    .lead{font-size:20px; line-height:1.5; color:var(--slate-300)}
+    .mono{font-family:var(--font-mono); font-size:14px}
+    
+    /* Focus states */
+    button:focus-visible, input:focus-visible, a:focus-visible{
+      outline:none; box-shadow:var(--focus-ring);
+    }
+    
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Navigation */
+    .nav{
+      position:sticky; top:0; z-index:50; 
+      background:rgba(19,35,53,.9); backdrop-filter:blur(12px);
+      border-bottom:var(--border-hairline); transition:background 0.3s ease;
+    }
+    .nav.scrolled{background:rgba(19,35,53,.95)}
+    .nav-inner{
+      max-width:var(--max-width); margin:0 auto; display:flex; align-items:center; 
+      padding:16px var(--gutter); gap:var(--gutter);
+    }
+    .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); 
+           font-weight:600; color:var(--white); text-decoration:none}
+    .brand img{width:24px; height:24px; filter:drop-shadow(0 0 8px rgba(247,208,70,.4))}
+    .nav-links{display:flex; gap:32px; margin-left:auto}
+    .nav-link{color:var(--slate-300); text-decoration:none; font-weight:500; 
+              padding:8px 0; transition:color 0.2s ease; border-bottom:2px solid transparent}
+    .nav-link:hover, .nav-link.active{color:var(--white); border-bottom-color:var(--aurora-green)}
+    .nav-actions{display:flex; gap:12px; align-items:center}
+    
+    /* Button system */
+    .btn{
+      display:inline-flex; align-items:center; gap:8px; padding:12px 20px; 
+      border-radius:var(--radius); font-weight:600; text-decoration:none; 
+      cursor:pointer; border:none; transition:all 0.2s ease; font-size:14px;
+    }
+    .btn-primary{
+      background:var(--grad-gold); color:var(--ink-navy); 
+      box-shadow:0 4px 14px rgba(247,208,70,.25);
+    }
+    .btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 20px rgba(247,208,70,.35)}
+    .btn-secondary{
+      background:rgba(255,255,255,.05); color:var(--white); 
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .btn-secondary:hover{background:rgba(255,255,255,.1)}
+    .btn-ghost{background:transparent; color:var(--slate-300)}
+    .btn-ghost:hover{color:var(--white)}
+    .btn-small{padding:8px 16px; font-size:13px}
+
+    /* Hero section - Full viewport grid */
+    .hero-container{position:relative; overflow:hidden; min-height:80vh}
+    .hero-content{
+      position:relative; z-index:2; padding:80px 40px 120px; height:100%;
+    }
+    
+    /* Main grid system - spans full hero */
+    .hero-grid{
+      display:grid; 
+      grid-template-columns:repeat(20, 1fr); 
+      grid-template-rows:repeat(12, 1fr);
+      gap:2px; height:600px; max-width:1400px; margin:0 auto;
+    }
+    
+    /* Neon Grid Background */
+    .aurora-grid{
+      position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:1;
+    }
+    .grid-pattern{
+      position:absolute; inset:0;
+      background:
+        repeating-linear-gradient(0deg, transparent 0px, rgba(52,241,161,.15) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, transparent 0px, rgba(52,241,161,.15) 1px, transparent 1px, transparent 60px);
+      opacity:0.6;
+    }
+    
+    /* Grid cells for content positioning */
+    .grid-overlay{
+      position:absolute; inset:0; 
+      display:grid; 
+      grid-template-columns:repeat(20, 1fr); 
+      grid-template-rows:repeat(12, 1fr);
+      gap:0; pointer-events:none;
+    }
+    
+    /* Subtle grid glow animation */
+    .grid-pattern::after{
+      content:''; position:absolute; inset:0;
+      background:
+        repeating-linear-gradient(0deg, transparent 0px, rgba(52,241,161,.25) 1px, transparent 2px, transparent 60px),
+        repeating-linear-gradient(90deg, transparent 0px, rgba(52,241,161,.25) 1px, transparent 2px, transparent 60px);
+      opacity:0; animation:gridGlow 8s ease-in-out infinite;
+    }
+    @keyframes gridGlow {
+      0%, 100% { opacity:0; }
+      50% { opacity:0.4; }
+    }
+    
+    /* Golden scanlines */
+    .golden-scanlines{
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        repeating-linear-gradient(45deg, transparent 0px, rgba(247,208,70,.06) 1px, transparent 2px, transparent 120px);
+      opacity:0.6;
+    }
+    
+    /* Grid Cell Base */
+    .grid-cell{
+      background:var(--deep-slate); border:1px solid rgba(52,241,161,.15);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:20px; position:relative; overflow:hidden;
+      transition:all 0.3s ease;
+    }
+    .grid-cell:hover{
+      border-color:rgba(52,241,161,.4);
+      box-shadow:0 0 20px rgba(52,241,161,.15);
+    }
+    
+    /* Headline Cell - Large merged area */
+    .headline-cell{
+      grid-column:1/13; grid-row:1/6; /* Takes up left side */
+      background:linear-gradient(135deg, var(--ink-navy), var(--deep-slate));
+      align-items:flex-start; text-align:left; padding:40px;
+    }
+    
+    /* CTA Cell */
+    .cta-cell{
+      grid-column:1/8; grid-row:6/9;
+      background:linear-gradient(135deg, rgba(247,208,70,.1), var(--deep-slate));
+    }
+    
+    /* Stats Area */
+    .stats-cell{
+      grid-column:13/21; grid-row:1/4;
+      background:rgba(52,241,161,.05);
+    }
+    
+    /* Mascot Cell - Large merged */
+    .mascot-cell{
+      grid-column:13/21; grid-row:4/9;
+      background:linear-gradient(135deg, rgba(247,208,70,.05), rgba(52,241,161,.03));
+      position:relative;
+    }
+    
+    /* Process Steps */
+    .process-cell{
+      background:rgba(247,208,70,.03);
+      flex-direction:row; gap:12px; font-size:14px; color:var(--slate-100);
+    }
+    .process-1{grid-column:8/11; grid-row:6/8}
+    .process-2{grid-column:11/14; grid-row:6/8}
+    .process-3{grid-column:8/11; grid-row:8/10}
+    .process-4{grid-column:11/14; grid-row:8/10}
+    
+    /* Small accent cells */
+    .accent-cell{
+      grid-column:1/4; grid-row:9/12;
+      background:rgba(52,241,161,.08);
+    }
+    
+    /* Typography for grid cells */
+    .grid-cell h1{margin:0 0 20px; line-height:1.1}
+    .grid-cell h3{margin:0 0 16px; color:var(--white)}
+    .stat-number{
+      font-size:32px; font-weight:700; color:var(--aurora-green);
+      font-family:var(--font-mono);
+    }
+    .stat-label{font-size:12px; color:var(--slate-300); margin-top:8px}
+    
+    /* Mascot with Halo */
+    .mascot-halo{
+      position:absolute; top:-60px; right:-60px; width:200px; height:200px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mascot-halo::before{
+      content:''; position:absolute; inset:-40px; border-radius:50%;
+      background:var(--grad-gold-glow); opacity:0.25; filter:blur(120px);
+      animation:mascotHalo 12s ease-in-out infinite;
+    }
+    .mascot-hero{
+      position:relative; width:160px; height:160px; filter:drop-shadow(0 0 24px rgba(247,208,70,.5));
+      transition:transform 0.3s ease;
+    }
+    .mascot-hero:hover{transform:translateY(-4px)}
+    @keyframes mascotHalo {
+      0%, 100% { opacity:0.15; transform:scale(0.95); }
+      50% { opacity:0.25; transform:scale(1.05); }
+    }
+    
+    /* Stepper Preview */
+    .stepper-preview{display:grid; gap:16px; margin:24px 0}
+    .step-item{
+      display:flex; align-items:center; gap:12px; padding:12px; 
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+      border-radius:8px; transition:background 0.2s ease;
+    }
+    .step-item:hover{background:rgba(255,255,255,.06)}
+    .step-number{
+      width:24px; height:24px; border-radius:50%; background:var(--aurora-green);
+      color:var(--ink-navy); font-weight:600; font-size:12px;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .step-item span:last-child{font-size:14px; color:var(--slate-100)}
+    
+    /* Value Cards */
+    .value-card{
+      background:var(--deep-slate); border:var(--border-hairline);
+      border-radius:var(--radius); padding:32px; text-align:center;
+      box-shadow:var(--shadow-card); transition:all 0.3s ease;
+      position:relative; overflow:hidden;
+    }
+    .value-card::before{
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background:var(--grad-aurora); opacity:0; transition:opacity 0.3s ease;
+    }
+    .value-card:hover{
+      transform:translateY(-4px); box-shadow:var(--shadow-float);
+      background:rgba(19,35,53,.8);
+    }
+    .value-card:hover::before{opacity:1}
+    .value-icon{font-size:24px; margin-bottom:16px}
+    
+    /* Step Pills */
+    .step-pill{
+      background:var(--deep-slate); border:var(--border-hairline);
+      border-radius:var(--radius); padding:24px; text-align:center;
+      box-shadow:var(--shadow-card); transition:all 0.3s ease; min-width:180px;
+    }
+    .step-pill:hover{transform:translateY(-2px); box-shadow:var(--shadow-float)}
+    .pill-number{
+      width:40px; height:40px; border-radius:50%; background:var(--aurora-green);
+      color:var(--ink-navy); font-weight:700; font-size:18px;
+      display:flex; align-items:center; justify-content:center; 
+      margin:0 auto 16px;
+    }
+    .step-pill h4{margin:0 0 8px; font-size:18px}
+    .step-pill p{margin:0; font-size:14px; color:var(--slate-300)}
+    
+    /* Pricing Cards */
+    .pricing-card{
+      background:var(--deep-slate); border:var(--border-hairline);
+      border-radius:var(--radius); padding:40px; text-align:center;
+      box-shadow:var(--shadow-card); transition:all 0.3s ease;
+    }
+    .pricing-card:hover{transform:translateY(-4px); box-shadow:var(--shadow-float)}
+    .pricing-card h3{margin:0 0 8px; font-size:24px}
+    
+    /* Grid Panel (merged cells look) */
+    .grid-panel{
+      position:absolute; border-radius:16px; backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.08);
+      background:
+        linear-gradient(180deg, rgba(11,27,43,.6), rgba(11,27,43,.35)),
+        repeating-linear-gradient(90deg, rgba(247,208,70,.08), rgba(247,208,70,.08) 1px, transparent 1px, transparent 32px),
+        repeating-linear-gradient(0deg, rgba(247,208,70,.08), rgba(247,208,70,.08) 1px, transparent 1px, transparent 32px);
+      box-shadow:0 10px 40px rgba(0,0,0,.35), 0 0 0 1px rgba(247,208,70,.08) inset;
+    }
+    
+    /* Mascot with glow */
+    .mascot-container{
+      position:relative; text-align:center;
+    }
+    .mascot-glow{
+      position:absolute; inset:-32px; border-radius:50%;
+      background:radial-gradient(closest-side, rgba(247,208,70,.25), transparent);
+    }
+    .mascot{
+      position:relative; width:160px; height:160px;
+      filter:drop-shadow(0 0 24px rgba(247,208,70,.5));
+      transition:transform .25s ease;
+    }
+    .mascot:hover{transform:translateY(-4px)}
+
+    /* Left column */
+    h1{font-size:56px; line-height:1.04; margin:0 0 14px; letter-spacing:-.5px}
+    .accent{color:var(--gold); text-shadow:0 0 14px rgba(247,208,70,.35)}
+    .lead{color:#c6d7e6; max-width:54ch}
+    .checks{margin:18px 0 0; display:grid; gap:10px}
+    .check{display:flex; gap:10px; align-items:flex-start; color:#bed0e0}
+    .dot{width:10px; height:10px; border-radius:50%; background:#21d07a; margin-top:4px;}
+    .cta-row{display:flex; gap:14px; margin:22px 0 6px; flex-wrap:wrap}
+
+    /* Right column audit card */
+    .panel{
+      background:linear-gradient(180deg, rgba(20,36,54,.75), rgba(14,29,43,.65)); border:1px solid rgba(255,255,255,.06);
+      border-radius:16px; box-shadow:var(--shadow); padding:18px; position:relative;
+      backdrop-filter:saturate(150%) blur(10px);
+    }
+    .panel h3{margin:6px 6px 12px; font-size:18px}
+    .field{display:grid; gap:8px; margin:12px 6px}
+    .field label{font-size:12px; color:#93a9be}
+    .input{border:1px solid rgba(255,255,255,.07); background:rgba(14,29,43,.7); color:#eaf3ff; padding:12px 12px; border-radius:12px; outline:none}
+    .input:focus{
+      border-color:color-mix(in srgb, var(--emerald-500) 75%, white 25%);
+      box-shadow:0 0 0 2px color-mix(in srgb, var(--emerald-500) 25%, transparent);
+    }
+    .panel .row{display:flex; gap:10px; margin:10px 6px 4px}
+    .note{color:#8ea6bc; font-size:12px; margin:10px 6px 0}
+
+    /* Sections below hero (kept simple here) */
+    section{max-width:var(--max); margin:30px auto 90px; padding:0 20px}
+    .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+    .card{background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px; min-height:120px}
+    .card h4{margin:0 0 8px}
+    @media(max-width:950px){ .cards{grid-template-columns:1fr} }
+
+    /* Footer */
+    footer{border-top:1px solid rgba(255,255,255,.05); color:#8ea6bc; padding:38px 20px; text-align:center}
+    /* Reduce motion */
+    @media (prefers-reduced-motion:reduce){
+      .mascot{transition:none}
+      .grid{animation:none}
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav" id="navbar">
+    <div class="nav-inner">
+      <a href="/" class="brand">
+        <img src="/static/uatu-logo.svg" alt="UatuAudit" style="width:36px; height:36px;">
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">What you get</a>
+        <a href="#how" class="nav-link">How it works</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/dashboard" class="btn btn-ghost btn-small">View dashboard</a>
+        <button class="btn btn-primary btn-small" id="connectWallet">Connect GitHub</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-container">
+    <!-- Neon Grid Background -->
+    <div class="aurora-grid" aria-hidden="true">
+      <div class="grid-pattern"></div>
+      <div class="grid-overlay"></div>
+    </div>
+    
+    <div class="hero-content">
+      <div class="hero-grid">
+        <!-- Headline Cell - Large merged area (spans 12 columns) -->
+        <div class="grid-cell headline-cell">
+          <h1>Ship with <span style="color:var(--gold); text-shadow:0 0 24px rgba(247,208,70,.2)">certainty</span>.</h1>
+          <p class="lead">One‑click audits with deterministic risk scoring, publisher‑grade PDFs, CI risk gates, and portfolio trends. On‑chain receipts on Base. Repeatable math—no vibes.</p>
+          
+          <!-- Cred bullets -->
+          <ul style="list-style:none; padding:0; margin:24px 0 0; display:grid; gap:12px;">
+            <li style="display:flex; align-items:flex-start; gap:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--aurora-green); margin-top:8px; flex-shrink:0;"></span>
+              <span>Publisher‑grade PDF with letterhead & watermark</span>
+            </li>
+            <li style="display:flex; align-items:flex-start; gap:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--aurora-green); margin-top:8px; flex-shrink:0;"></span>
+              <span>Risk score, deltas, STRIDE, gas & tests</span>
+            </li>
+            <li style="display:flex; align-items:flex-start; gap:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--aurora-green); margin-top:8px; flex-shrink:0;"></span>
+              <span>PR badges + sparklines; portfolio roll‑ups</span>
+            </li>
+            <li style="display:flex; align-items:flex-start; gap:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--aurora-green); margin-top:8px; flex-shrink:0;"></span>
+              <span>Pay‑per‑run in USDC or subscribe "every‑commit"</span>
+            </li>
+          </ul>
+        </div>
+        
+        <!-- Stats Cell - Right side top -->
+        <div class="grid-cell stats-cell">
+          <div class="stat-number">100</div>
+          <div class="stat-label">USDC per audit</div>
+          <div style="margin-top:16px;">
+            <div class="stat-number">30s</div>
+            <div class="stat-label">to first result</div>
+          </div>
+        </div>
+        
+        <!-- Main CTA Cell - Bottom left -->
+        <div class="grid-cell cta-cell">
+          <h3>Start an Audit</h3>
+          <button class="btn btn-primary" id="startAudit" style="width:100%;">Connect GitHub — 30s to your first audit</button>
+        </div>
+        
+        <!-- Mascot Cell - Large merged area -->
+        <div class="grid-cell mascot-cell">
+          <div class="mascot-halo">
+            <img src="/static/uatu-mascot.png" alt="Uatu" class="mascot-hero">
+          </div>
+          <div style="position:absolute; bottom:20px; left:20px; right:20px; display:flex; justify-content:space-between; font-size:10px;">
+            <div style="text-align:center;">
+              <div style="color:var(--aurora-green); font-weight:700; font-family:var(--font-mono);">EIP-712</div>
+              <div style="color:var(--slate-300);">signed intent</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="color:var(--aurora-green); font-weight:700; font-family:var(--font-mono);">BASE</div>
+              <div style="color:var(--slate-300);">USDC payments</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Process Steps -->
+        <div class="grid-cell process-cell process-1">
+          <div style="width:24px; height:24px; border-radius:50%; background:var(--aurora-green); color:var(--ink-navy); font-weight:600; display:flex; align-items:center; justify-content:center;">1</div>
+          <span>Connect</span>
+        </div>
+        
+        <div class="grid-cell process-cell process-2">
+          <div style="width:24px; height:24px; border-radius:50%; background:var(--aurora-green); color:var(--ink-navy); font-weight:600; display:flex; align-items:center; justify-content:center;">2</div>
+          <span>Sign</span>
+        </div>
+        
+        <div class="grid-cell process-cell process-3">
+          <div style="width:24px; height:24px; border-radius:50%; background:var(--aurora-green); color:var(--ink-navy); font-weight:600; display:flex; align-items:center; justify-content:center;">3</div>
+          <span>Pay</span>
+        </div>
+        
+        <div class="grid-cell process-cell process-4">
+          <div style="width:24px; height:24px; border-radius:50%; background:var(--aurora-green); color:var(--ink-navy); font-weight:600; display:flex; align-items:center; justify-content:center;">4</div>
+          <span>Receive</span>
+        </div>
+        
+        <!-- Accent Cell -->
+        <div class="grid-cell accent-cell">
+          <div style="font-size:18px; color:var(--aurora-green);">✓</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Value Grid -->
+  <section id="features" style="max-width:var(--max-width); margin:80px auto; padding:0 var(--gutter);">
+    <div style="text-align:center; margin-bottom:64px;">
+      <h2>Built for teams who ship smart contracts with discipline, not vibes.</h2>
+    </div>
+    
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:24px;">
+      <div class="value-card">
+        <div class="value-icon">📊</div>
+        <h4>Deterministic risk score</h4>
+        <p>0–100 with grade buckets + baselines. Repeatable methodology.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">📄</div>
+        <h4>Publisher‑grade PDF</h4>
+        <p>Letterhead, watermark, executive summary, heatmap, findings, appendix.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🔀</div>
+        <h4>PR badges & trends</h4>
+        <p>Inline SVG badge + sparkline per PR, portfolio roll‑ups.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🚧</div>
+        <h4>CI risk gates</h4>
+        <p>Stop merges when overall risk or delta exceeds baselines per-contract.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">⛓️</div>
+        <h4>On-chain receipts</h4>
+        <p>USDC on Base. Optional EIP-712 signed intent binds repo & commit.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🌐</div>
+        <h4>Multi-chain ready</h4>
+        <p>EVM + Soroban support out-of-the-box; extendable pipeline.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works -->
+  <section id="how" style="max-width:var(--max-width); margin:80px auto; padding:0 var(--gutter);">
+    <div style="text-align:center; margin-bottom:64px;">
+      <h2>How it works</h2>
+    </div>
+    
+    <div style="display:flex; gap:24px; justify-content:center;">
+      <div class="step-pill">
+        <div class="pill-number">1</div>
+        <h4>Connect</h4>
+        <p>GitHub & wallet</p>
+      </div>
+      <div class="step-pill">
+        <div class="pill-number">2</div>
+        <h4>Sign</h4>
+        <p>Audit intent (repo + ref)</p>
+      </div>
+      <div class="step-pill">
+        <div class="pill-number">3</div>
+        <h4>Pay</h4>
+        <p>100 USDC or every‑commit</p>
+      </div>
+      <div class="step-pill">
+        <div class="pill-number">4</div>
+        <h4>Receive</h4>
+        <p>PDF + PR badge, CI gates</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" style="max-width:var(--max-width); margin:80px auto; padding:0 var(--gutter);">
+    <div style="text-align:center; margin-bottom:64px;">
+      <h2>Pricing</h2>
+    </div>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; max-width:800px; margin:0 auto;">
+      <div class="pricing-card">
+        <h3>Pay-per-run</h3>
+        <div style="font-size:48px; font-weight:700; color:var(--gold); margin:16px 0;">100 <span style="font-size:20px; color:var(--slate-300)">USDC</span></div>
+        <p>Each retry is a fresh audit. Instant results.</p>
+        <button class="btn btn-primary" style="width:100%; margin-top:24px;">Start now</button>
+      </div>
+      <div class="pricing-card">
+        <h3>Every-commit</h3>
+        <div style="font-size:24px; font-weight:600; color:var(--white); margin:16px 0;">Contact</div>
+        <p>Protected branches, risk gates, portfolio roll‑ups.</p>
+        <button class="btn btn-secondary" style="width:100%; margin-top:24px;">Contact sales</button>
+      </div>
+    </div>
+    
+    <div style="text-align:center; margin-top:32px;">
+      <p style="font-size:14px; color:var(--slate-300);">USDC on Base. EVM wallets supported.</p>
+    </div>
+  </section>
+
+  <footer>© 2025 UatuAudit. All rights reserved.</footer>
+
+  <script>
+    // Neon Grid Effects
+    function initNeonGrid() {
+      // The grid is now pure CSS-based with neon green lines
+      // Add subtle grid interaction effects
+      const gridCells = document.querySelectorAll('.grid-cell');
+      
+      gridCells.forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+          // Add temporary neon glow on hover
+          cell.style.boxShadow = '0 0 30px rgba(52,241,161,.3), inset 0 0 20px rgba(52,241,161,.1)';
+        });
+        
+        cell.addEventListener('mouseleave', () => {
+          // Remove glow
+          cell.style.boxShadow = '';
+        });
+      });
+    }
+    
+    // Navigation scroll effect
+    function initNavScroll() {
+      const nav = document.getElementById('navbar');
+      if (!nav) return;
+      
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+          nav.classList.add('scrolled');
+        } else {
+          nav.classList.remove('scrolled');
+        }
+      });
+    }
+    
+    // Connect wallet functionality
+    function initWalletConnect() {
+      const buttons = ['connectWallet', 'heroConnect', 'startAudit'];
+      buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.addEventListener('click', () => {
+            // Trigger modal stepper wizard here
+            console.log('Opening audit wizard...');
+            alert('Audit wizard coming soon! This will open the GitHub → Wallet → Sign → Pay flow.');
+          });
+        }
+      });
+    }
+    
+    // Initialize everything
+    function init() {
+      initNeonGrid();
+      initNavScroll();
+      initWalletConnect();
+    }
+    
+    // Start when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    // Palette-aware focus for buttons
+    const connectButtons=[document.getElementById('connectBtn'), document.getElementById('ctaConnect')];
+    connectButtons.forEach(btn=>btn?.addEventListener('click', async ()=>{
+      if(!window.ethereum){ alert('Install MetaMask to continue.'); return; }
+      await ethereum.request({ method:'eth_requestAccounts' });
+      const chainId = await ethereum.request({ method: 'eth_chainId' });
+      // Base mainnet chainId 0x2105; switch if needed
+      if(chainId !== '0x2105'){
+        try{
+          await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x2105' }]});
+        }catch(e){}
+      }
+      btn.innerText='Wallet connected';
+      btn.classList.remove('gold'); btn.classList.add('secondary');
+    }));
+
+    // EIP-712 sign intent (simple domain + message example)
+    document.getElementById('signBtn')?.addEventListener('click', async ()=>{
+      if(!window.ethereum){ return alert('Connect wallet first.'); }
+      const [account] = await ethereum.request({ method:'eth_requestAccounts' });
+
+      const domain = {
+        name: 'UatuAudit',
+        version: '1',
+        chainId: 8453,   // Base
+        verifyingContract: '0xYourOrdersContract'
+      };
+      const types = {
+        AuditIntent: [
+          { name: 'repo', type: 'string' },
+          { name: 'ref',  type: 'string' },
+          { name: 'ts',   type: 'uint64' }
+        ]
+      };
+      const value = {
+        repo: document.getElementById('git').value || '',
+        ref:  document.getElementById('ref').value || 'main',
+        ts:   Math.floor(Date.now()/1000)
+      };
+
+      try{
+        const sig = await ethereum.request({
+          method: 'eth_signTypedData_v4',
+          params: [account, JSON.stringify({ domain, types, primaryType:'AuditIntent', message:value })]
+        });
+        console.log('intent signature', sig);
+        alert('Intent signed. We'll verify server-side.');
+      }catch(err){
+        alert('Signature cancelled.');
+      }
+    });
+
+    // Dummy Pay button (wire this to your USDC approval + pay flow)
+    document.getElementById('payBtn')?.addEventListener('click', ()=>{
+      alert('Trigger USDC approval + pay(…) here.');
+    });
+  </script>
+</body>
+</html>

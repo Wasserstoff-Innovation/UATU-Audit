@@ -1,223 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - UatuAudit Report</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 18mm;
-            @top-center {
-                content: "UatuAudit - {{ contract_id or 'Portfolio' }} - Page " counter(page);
-                font-size: 10pt;
-                color: #666;
-            }
-            @bottom-center {
-                content: "Generated {{ generated_at }} | {{ git_ref or 'Unknown' }}";
-                font-size: 9pt;
-                color: #999;
-            }
-        }
-        
-        body {
-            font-family: 'Noto Sans', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-        
-        .cover-page {
-            min-height: 297mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40mm;
-        }
-        
-        .logo {
-            width: 80mm;
-            height: 80mm;
-            margin: 0 auto 20mm;
-            background: linear-gradient(135deg, #2e7d32, #4caf50);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24pt;
-            font-weight: bold;
-        }
-        
-        .title {
-            font-size: 28pt;
-            font-weight: bold;
-            color: #2e7d32;
-            margin-bottom: 10mm;
-        }
-        
-        .subtitle {
-            font-size: 18pt;
-            color: #666;
-            margin-bottom: 5mm;
-        }
-        
-        .contract-info {
-            font-size: 14pt;
-            color: #333;
-        }
-        
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        
-        .status-section {
-            margin-bottom: 30mm;
-        }
-        
-        .overall-score {
-            font-size: 36pt;
-            font-weight: bold;
-            color: #2e7d32;
-            margin-bottom: 10mm;
-        }
-        
-        .grade {
-            font-size: 24pt;
-            font-weight: bold;
-            color: #666;
-            margin-bottom: 15mm;
-        }
-        
-        .status-badges {
-            margin-bottom: 20mm;
-        }
-        
-        .executive-summary {
-            text-align: left;
-            max-width: 140mm;
-            margin: 0 auto;
-        }
-        
-        .summary-title {
-            font-size: 16pt;
-            font-weight: bold;
-            color: #2e7d32;
-            margin-bottom: 8mm;
-            text-align: center;
-        }
-        
-        .summary-item {
-            margin-bottom: 3mm;
-            font-size: 11pt;
-        }
-        
-        .summary-label {
-            font-weight: bold;
-            color: #555;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 20mm;
-            padding-top: 10mm;
-            border-top: 1px solid #ddd;
-            font-size: 10pt;
-            color: #999;
-        }
-        
-        .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 48pt;
-            color: rgba(46, 125, 50, 0.1);
-            z-index: -1;
-        }
-    </style>
+  <meta charset="utf-8">
+  <title>{{ title or "UatuAudit Report" }}</title>
+  <link rel="stylesheet" href="../report/print.css">
 </head>
-<body>
-    <div class="cover-page">
-        <div class="watermark">UATU</div>
-        
-        <div class="header">
-            <div class="logo">U</div>
-            <div class="title">UatuAudit Report</div>
-            <div class="subtitle">{{ report_type }}</div>
-            {% if contract_id %}
-            <div class="contract-info">{{ contract_id }}</div>
-            {% endif %}
-        </div>
-        
-        <div class="main-content">
-            <div class="status-section">
-                <div class="overall-score">{{ "%.1f"|format(overall_score) }}</div>
-                <div class="grade">{{ grade }}</div>
-                
-                <div class="status-badges">
-                    {{ status_badges_html | safe }}
-                </div>
-            </div>
-            
-            <div class="executive-summary">
-                <div class="summary-title">Executive Summary</div>
-                
-                <div class="summary-item">
-                    <span class="summary-label">Overall Risk Score:</span> 
-                    {{ "%.1f"|format(overall_score) }} ({{ grade }})
-                </div>
-                
-                {% if delta_overall is defined and delta_overall != 0 %}
-                <div class="summary-item">
-                    <span class="summary-label">Change vs Baseline:</span> 
-                    {% if delta_overall > 0 %}
-                        <span style="color: #d32f2f;">+{{ "%.1f"|format(delta_overall) }} ↑ (worse)</span>
-                    {% else %}
-                        <span style="color: #2e7d32;">{{ "%.1f"|format(delta_overall) }} ↓ (better)</span>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                {% if top_risks %}
-                <div class="summary-item">
-                    <span class="summary-label">Top Risk:</span> 
-                    {{ top_risks[0].function }} ({{ "%.1f"|format(top_risks[0].score) }})
-                </div>
-                {% endif %}
-                
-                {% if test_summary %}
-                <div class="summary-item">
-                    <span class="summary-label">Test Status:</span> 
-                    {{ test_summary.passed }}/{{ test_summary.total }} passed
-                </div>
-                {% endif %}
-                
-                {% if eop_coverage %}
-                <div class="summary-item">
-                    <span class="summary-label">EoP Coverage:</span> 
-                    {{ eop_coverage.covered }}/{{ eop_coverage.total }} functions
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="footer">
-            <div>Generated by UatuAudit v{{ version }}</div>
-            <div>{{ generated_at }}</div>
-            {% if git_ref %}
-            <div>Git: {{ git_ref }}</div>
-            {% endif %}
-        </div>
+<body class="u-cover">
+  <header class="u-letterhead">
+    <img class="u-logo" src="{{ static_url('uatu-logo.svg') }}" alt="UatuAudit">
+    <div class="u-brand">
+      <h1>UatuAudit</h1>
+      <div>Smart Contract Security</div>
     </div>
+    <div class="u-meta">
+      <div><strong>Date:</strong> {{ run.generated_at }}</div>
+      <div><strong>Contract:</strong> {{ run.contract_id }}</div>
+      <div><strong>Repo:</strong> {{ meta.repo or "—" }}</div>
+      <div><strong>Ref:</strong> {{ meta.ref or "main" }}</div>
+    </div>
+  </header>
+
+  <main class="u-cover-main">
+    <h2>{{ title or "Security Audit Report" }}</h2>
+    <div class="u-badges">
+      <span class="badge badge-{{ risk.summary.grade|lower }}">{{ risk.summary.grade }}</span>
+      <span class="badge">Score {{ "%.1f"|format(risk.summary.overall) }}</span>
+      {% if risk.summary.delta_overall is defined %}<span class="badge">Δ {{ "%.1f"|format(risk.summary.delta_overall) }}</span>{% endif %}
+    </div>
+
+    <ul class="u-points">
+      <li>Deterministic risk score with baselines & grade buckets</li>
+      <li>LLM-assisted assertions with compile precheck (disabled if keys missing)</li>
+      <li>STRIDE threats, findings, heatmap, gas analysis, and tests</li>
+      <li>Portfolio trend & PR badges/sparklines</li>
+    </ul>
+  </main>
+
+  <div class="u-watermark">
+    <img src="{{ static_url('uatu-mascot.png') }}" alt="">
+  </div>
+
+  <footer class="u-footer">© 2025 UatuAudit • report id: {{ run.id }}</footer>
 </body>
 </html>
