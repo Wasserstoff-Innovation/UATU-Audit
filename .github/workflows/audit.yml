@@ -10,8 +10,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: audit-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   discover:
@@ -43,6 +43,11 @@ jobs:
       - name: Tag output
         id: tag
         run: echo "image=contract-auditor" >> $GITHUB_OUTPUT
+      - name: Cache foundry (optional speed)
+        uses: actions/cache@v4
+        with:
+          path: ~/.foundry
+          key: foundry-${{ runner.os }}-v1
 
   audit:
     needs: [discover, build]
@@ -94,6 +99,20 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke Tests (Individual)
+        run: |
+          echo "=== Individual Audit Smoke Tests ==="
+          
+          # Check risk.json structure
+          test -f "out/$TS/runs/risk/risk.json"
+          jq -e 'has("summary") and has("by_function")' "out/$TS/runs/risk/risk.json"
+          
+          # Check reports exist
+          test -f "out/$TS/report.html"
+          test -f "out/$TS/report.md"
+          
+          echo "✅ All individual smoke tests passed"
+
       - name: Upload artifacts (per contract)
         uses: actions/upload-artifact@v4
         with:
@@ -104,6 +123,30 @@ jobs:
             out/$TS/runs/risk/risk.json
             out/$TS/runs/risk/heatmap.csv
             out/$TS/runs/tests/*.json
+            out/$TS/badge-risk.svg
+            out/$TS/sparkline-risk.svg
+
+      - name: Base64 badge (if exists)
+        id: badge
+        run: |
+          if [ -f "out/$TS/badge-risk.svg" ]; then
+            echo "has_badge=true" >> $GITHUB_OUTPUT
+            b64=$(base64 -w0 out/$TS/badge-risk.svg || base64 out/$TS/badge-risk.svg)
+            echo "b64=${b64}" >> $GITHUB_OUTPUT
+          else
+            echo "has_badge=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Base64 sparkline (if exists)
+        id: spark
+        run: |
+          if [ -f "out/$TS/sparkline-risk.svg" ]; then
+            echo "has_sparkline=true" >> $GITHUB_OUTPUT
+            b64=$(base64 -w0 out/$TS/sparkline-risk.svg || base64 out/$TS/sparkline-risk.svg)
+            echo "b64=${b64}" >> $GITHUB_OUTPUT
+          else
+            echo "has_sparkline=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: PR summary comment
         if: github.event_name == 'pull_request'
@@ -112,6 +155,8 @@ jobs:
           header: "audit-${{ matrix.id }}"
           message: |
             **Audit – ${{ matrix.id }}**
+            ${{ steps.badge.outputs.has_badge == 'true' && format('![risk](data:image/svg+xml;base64,{0})', steps.badge.outputs.b64) || '_No badge (no risk.json)_'}}
+            ${{ steps.spark.outputs.has_sparkline == 'true' && format('Risk trend: ![trend](data:image/svg+xml;base64,{0})', steps.spark.outputs.b64) || '_No trend data_'}}
             - Overall: `$(jq -r '.summary.overall' out/$TS/runs/risk/risk.json)`
             - Δ vs baseline: `$(jq -r '.summary.delta_overall//0' out/$TS/runs/risk/risk.json)`
             - Risk Profile: `$(jq -r '.summary.buckets | to_entries | map(select(.value > 0)) | map("\(.key): \(.value)") | join(", ")' out/$TS/runs/risk/risk.json)`
@@ -119,12 +164,138 @@ jobs:
               $(jq -r '.summary.top_functions[0:5][] | "* \(.key): \(.score)"' out/$TS/runs/risk/risk.json)
             - Artifacts: **audit-${{ matrix.id }}**
 
-  refresh-baseline:
-    if: github.event_name == 'push'
+  aggregate:
     needs: [discover, build, audit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Build image
+        run: docker build -t contract-auditor .
+      
+      - name: Collect risk files
+        run: |
+          find artifacts -name risk.json > risk-files.txt
+          cat risk-files.txt
+      
+      - name: Aggregate portfolio
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work contract-auditor \
+            auditor aggregate \
+              --inputs $(tr '\n' ' ' < risk-files.txt) \
+              --out out-portfolio \
+              --baseline baseline/portfolio.risk.json \
+              --trend on --trend-n 10 --badge on --export csv
+      
+      - name: Upload portfolio artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-portfolio
+          path: out-portfolio/**
+          retention-days: 21
+      
+      - name: Gate on portfolio thresholds
+        env:
+          PORTFOLIO_MAX_OVERALL: "30"
+          PORTFOLIO_MAX_DELTA: "5"
+        run: |
+          ts=$(ls -1 out-portfolio | tail -n1)
+          jq -e ".summary.overall <= ($PORTFOLIO_MAX_OVERALL|tonumber)" out-portfolio/$ts/portfolio.json
+          jq -e "(.summary.delta_overall|abs) <= ($PORTFOLIO_MAX_DELTA|tonumber)" out-portfolio/$ts/portfolio.json
+      
+      - name: Smoke Tests (Portfolio)
+        run: |
+          ts=$(ls -1 out-portfolio | tail -n1)
+          echo "=== Portfolio Smoke Tests ==="
+          
+          # Check portfolio.json structure
+          test -f "out-portfolio/$ts/portfolio.json"
+          jq -e 'has("summary") and has("by_contract")' "out-portfolio/$ts/portfolio.json"
+          
+          # Check CSV structure
+          test -f "out-portfolio/$ts/portfolio.heatmap.csv"
+          grep -E '^contract_id,kind,overall,grade,delta,ts,bucket_critical,bucket_high,bucket_medium,bucket_low,bucket_info$' "out-portfolio/$ts/portfolio.heatmap.csv"
+          
+          # Check validation status
+          jq -e '._validation == "valid" or ._validation == null' "out-portfolio/$ts/portfolio.json"
+          
+          echo "✅ All portfolio smoke tests passed"
+      
+      - name: Base64 badge + sparkline
+        id: viz
+        run: |
+          ts=$(ls -1 out-portfolio | tail -n1)
+          b64_badge=$(base64 -w0 out-portfolio/$ts/badge-portfolio.svg || base64 out-portfolio/$ts/badge-portfolio.svg)
+          b64_spark=$(base64 -w0 out-portfolio/$ts/sparkline-portfolio.svg || base64 out-portfolio/$ts/sparkline-portfolio.svg)
+          echo "badge=${b64_badge}" >> $GITHUB_OUTPUT
+          echo "spark=${b64_spark}" >> $GITHUB_OUTPUT
+      
+      - name: Generate portfolio comment
+        id: portfolio
+        run: |
+          ts=$(ls -1 out-portfolio | tail -n1)
+          score=$(jq -r '.summary.overall' out-portfolio/$ts/portfolio.json)
+          grade=$(jq -r '.summary.grade' out-portfolio/$ts/portfolio.json)
+          delta=$(jq -r '.summary.delta_overall' out-portfolio/$ts/portfolio.json)
+          count=$(jq -r '.summary.top_contracts | length' out-portfolio/$ts/portfolio.json)
+          
+          # Generate top contracts list
+          top_contracts=$(jq -r '.summary.top_contracts[0:3][] | "- \(.id) (\(.overall) \(.grade)) · Δ \(.delta)"' out-portfolio/$ts/portfolio.json | tr '\n' '\n')
+          
+          echo "score=${score}" >> $GITHUB_OUTPUT
+          echo "grade=${grade}" >> $GITHUB_OUTPUT
+          echo "delta=${delta}" >> $GITHUB_OUTPUT
+          echo "count=${count}" >> $GITHUB_OUTPUT
+          echo "top_contracts<<EOF" >> $GITHUB_OUTPUT
+          echo "$top_contracts" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Sticky PR comment (portfolio)
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          header: "portfolio-risk"
+          message: |
+            ## Portfolio Risk
+            
+            ![portfolio risk](data:image/svg+xml;base64,${{ steps.viz.outputs.badge }})
+            
+            **Overall:** ${{ steps.portfolio.outputs.score }} (${{ steps.portfolio.outputs.grade }}) · Δ ${{ steps.portfolio.outputs.delta }}
+            
+            Trend (${{ steps.portfolio.outputs.count }} runs):  
+            ![portfolio trend](data:image/svg+xml;base64,${{ steps.viz.outputs.spark }})
+            
+            Top risky contracts:
+            ${{ steps.portfolio.outputs.top_contracts }}
+            
+            **Portfolio artifacts:** audit-portfolio
+      
+      - name: Slack Notification (Optional)
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          ts=$(ls -1 out-portfolio | tail -n1)
+          OVERALL=$(jq -r '.summary.overall' out-portfolio/$ts/portfolio.json)
+          GRADE=$(jq -r '.summary.grade' out-portfolio/$ts/portfolio.json)
+          DELTA=$(jq -r '.summary.delta_overall // 0' out-portfolio/$ts/portfolio.json)
+          
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"*Portfolio Risk*: ${GRADE} ${OVERALL} (Δ ${DELTA})\"}" \
+            "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  refresh-baseline:
+    if: github.event_name == 'push'
+    needs: [discover, build, audit, aggregate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
       - name: Copy latest risks to baseline
         run: |
           # For each matrix item, pick the last timestamp and copy to baseline/<id>.risk.json
@@ -141,10 +312,27 @@ jobs:
           PY
         env:
           MATRIX: ${{ needs.discover.outputs.matrix }}
+      
+      - name: Copy portfolio baseline
+        run: |
+          # Copy latest portfolio data to baseline
+          portfolio_outs = sorted(glob.glob('out-portfolio/*/portfolio.json'))
+          if portfolio_outs:
+              os.makedirs('baseline', exist_ok=True)
+              shutil.copyfile(portfolio_outs[-1], 'baseline/portfolio.risk.json')
+              print("Updated baseline/portfolio.risk.json")
+              
+              # Copy portfolio history
+              history_outs = sorted(glob.glob('out-portfolio/*/portfolio.history.json'))
+              if history_outs:
+                  shutil.copyfile(history_outs[-1], 'baseline/portfolio.history.json')
+                  print("Updated baseline/portfolio.history.json")
+          PY
+      
       - name: Commit baseline
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add baseline/*.risk.json || true
+          git add baseline/*.risk.json baseline/portfolio.* || true
           git commit -m "chore: refresh baselines" || echo "no baseline changes"
           git push || true

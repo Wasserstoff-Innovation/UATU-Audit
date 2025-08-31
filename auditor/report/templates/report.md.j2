@@ -29,6 +29,11 @@
 **Risk Profile:** {% for grade, count in risk_summary.buckets.items() %}{% if count > 0 %}`{{ grade }}: {{ count }}` {% endif %}{% endfor %}
 {% endif %}
 
+{% if risk_trend %}
+**Risk Trend:** Latest: **{{ "%.1f"|format(risk_trend.meta.latest) }}**, Window: **{{ risk_trend.meta.count }}** (min **{{ "%.1f"|format(risk_trend.meta.min) }}**, max **{{ "%.1f"|format(risk_trend.meta.max) }}**)
+_See HTML report for inline sparkline._
+{% endif %}
+
 ### Top 10 Risky Functions
 {% if risk and risk.summary.top_functions %}
 | # | Function | Score | Δ | Grade |

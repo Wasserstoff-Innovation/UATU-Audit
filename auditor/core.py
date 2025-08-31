@@ -19,7 +19,7 @@ from .llm.engine import detect_provider, LLMMeta
 from .risk.scoring import score as risk_score
 
 class Orchestrator:
-    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto", llm_provider: str = "auto", llm_model: str = "", risk: bool = True, risk_config_path: str | None = None, risk_baseline: str | None = None, risk_export: str = "csv"):
+    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto", llm_provider: str = "auto", llm_model: str = "", risk: bool = True, risk_config_path: str | None = None, risk_baseline: str | None = None, risk_export: str = "csv", badge: bool = True, trend: bool = True, trend_n: int = 10):
         self.input = input_path_or_address
         self.kind = kind
         self.out_root = out_root
@@ -32,6 +32,9 @@ class Orchestrator:
         self.risk_config_path = risk_config_path
         self.risk_baseline = risk_baseline
         self.risk_export = risk_export
+        self.badge = badge
+        self.trend = trend
+        self.trend_n = trend_n
 
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         self.outdir = out_root / ts
@@ -198,6 +201,32 @@ class Orchestrator:
         if schema_path.exists():
             validate_json(res, schema_path)
 
+    def _load_history(self) -> list:
+        """Load best available history: baseline first, then local fallback."""
+        history = []
+        
+        # Try baseline history first
+        if self.risk_baseline:
+            baseline_dir = Path(self.risk_baseline).parent
+            baseline_id = baseline_dir.name.replace(".risk.json", "")
+            baseline_history_path = baseline_dir / f"{baseline_id}.history.json"
+            if baseline_history_path.exists():
+                try:
+                    history = __import__("json").loads(baseline_history_path.read_text())
+                    return history
+                except Exception:
+                    pass
+        
+        # Fallback to local history if available
+        local_history_path = self.outdir / "runs" / "risk" / "history.json"
+        if local_history_path.exists():
+            try:
+                history = __import__("json").loads(local_history_path.read_text())
+            except Exception:
+                pass
+        
+        return history
+
     def _report(self) -> None:
         # very small report that lists contracts and functions
         from .report.builder import build_report
@@ -218,5 +247,59 @@ class Orchestrator:
         self._run_tests()
         if self.risk:
             self._compute_and_save_risk(flows, threats)
+            # Generate risk badge if enabled
+            if self.badge:
+                try:
+                    from .badges.svg import render_badge
+                    risk_path = self.outdir / "runs" / "risk" / "risk.json"
+                    if risk_path.exists():
+                        render_badge(risk_path, self.outdir, label="risk")
+                except Exception as e:
+                    print(f"[warn] badge generation failed: {e}")
+            
+            # Generate risk trend sparkline if enabled
+            if self.trend:
+                try:
+                    from .trends.sparkline import render_sparkline
+                    risk_path = self.outdir / "runs" / "risk" / "risk.json"
+                    if risk_path.exists():
+                        # Load current risk data
+                        risk_data = __import__("json").loads(risk_path.read_text())
+                        current_score = float(risk_data.get("summary", {}).get("overall", 0.0))
+                        current_grade = str(risk_data.get("summary", {}).get("grade", "Info"))
+                        
+                        # Load best available history
+                        history = self._load_history()
+                        
+                        # Append current score and cap to trend_n
+                        history.append({
+                            "ts": datetime.utcnow().isoformat() + "Z",
+                            "overall": current_score
+                        })
+                        history = history[-self.trend_n:]  # Keep last N
+                        
+                        # Save local history
+                        history_path = self.outdir / "runs" / "risk" / "history.json"
+                        history_path.parent.mkdir(parents=True, exist_ok=True)
+                        history_path.write_text(__import__("json").dumps(history, indent=2))
+                        
+                        # Generate sparkline
+                        scores = [entry["overall"] for entry in history]
+                        sparkline_path, data_uri = render_sparkline(scores, current_grade, self.outdir)
+                        
+                        # Save trend metadata
+                        trend_meta = {
+                            "count": len(history),
+                            "min": min(scores) if scores else 0.0,
+                            "max": max(scores) if scores else 0.0,
+                            "latest": current_score,
+                            "grade": current_grade,
+                            "source": "local"
+                        }
+                        trend_meta_path = self.outdir / "runs" / "risk" / "trend.meta.json"
+                        trend_meta_path.write_text(__import__("json").dumps(trend_meta, indent=2))
+                        
+                except Exception as e:
+                    print(f"[warn] trend generation failed: {e}")
         self._report()
         return self.outdir

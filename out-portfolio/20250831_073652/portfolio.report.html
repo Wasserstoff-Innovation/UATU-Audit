@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Risk Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .overview { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .badge { display: inline-block; margin-right: 20px; vertical-align: top; }
+        .stats { display: inline-block; }
+        .buckets { margin-top: 15px; }
+        .bucket { display: inline-block; padding: 4px 12px; border-radius: 20px; margin-right: 8px; margin-bottom: 8px; color: white; font-weight: bold; }
+        .bucket.critical { background: #d32f2f; }
+        .bucket.high { background: #f57c00; }
+        .bucket.medium { background: #fbc02d; color: #333; }
+        .bucket.low { background: #0288d1; }
+        .bucket.info { background: #2e7d32; }
+        .trend { margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 8px; }
+        .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .table th { background: #f8f9fa; font-weight: 600; }
+        .delta { font-weight: bold; }
+        .delta.positive { color: #d32f2f; }
+        .delta.negative { color: #2e7d32; }
+        .delta.neutral { color: #666; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Portfolio Risk Report</h1>
+        <p>Aggregated risk assessment across all audited contracts</p>
+    </div>
+
+    <div class="overview">
+        <div class="badge">
+            
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNzAiIGhlaWdodD0iMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0icmlzazogSW5mbyI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJzIiB4Mj0iMCIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2JiYiIgc3RvcC1vcGFjaXR5PSIuMSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1vcGFjaXR5PSIuMSIvPjwvbGluZWFyR3JhZGllbnQ+CiAgPG1hc2sgaWQ9Im0iPjxyZWN0IHdpZHRoPSIxNzAiIGhlaWdodD0iMjQiIHJ4PSI0IiBmaWxsPSIjZmZmIi8+PC9tYXNrPgogIDxnIG1hc2s9InVybCgjbSkiPgogICAgPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjI0IiBmaWxsPSIjNTU1Ii8+CiAgICA8cmVjdCB4PSI2MCIgd2lkdGg9IjExMCIgaGVpZ2h0PSIyNCIgZmlsbD0iIzJlN2QzMiIvPgogICAgPHJlY3Qgd2lkdGg9IjE3MCIgaGVpZ2h0PSIyNCIgZmlsbD0idXJsKCNzKSIvPgogIDwvZz4KICA8ZyBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iRGVqYVZ1IFNhbnMsVmVyZGFuYSxHZW5ldmEsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSI+CiAgICA8dGV4dCB4PSIzMCIgeT0iMTYiPnBvcnRmb2xpbzwvdGV4dD4KICAgIDx0ZXh0IHg9IjExNSIgeT0iMTYiPkluZm8gMC4wPC90ZXh0PgogIDwvZz4KPC9zdmc+" alt="portfolio risk" />
+            
+        </div>
+        <div class="stats">
+            <h2>Portfolio Overview</h2>
+            <p><strong>Overall Risk:</strong> 0.0 (Info)</p>
+            
+            
+            <div class="buckets">
+                <strong>Risk Distribution:</strong><br>
+                
+                    
+                
+                    
+                
+                    
+                
+                    
+                
+                    
+                    <span class="bucket info">Info: 5</span>
+                    
+                
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="trend">
+        <h3>Portfolio Risk Trend (last 1 runs)</h3>
+        
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAyMDAgMzAiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0icmlzayB0cmVuZCI+CiAgPHBvbHlsaW5lIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIgogICAgcG9pbnRzPSI0LjAsMTUuMCIvPgo8L3N2Zz4=" alt="portfolio trend" style="max-width: 100%;" />
+        
+        <p><small>
+            Latest: <strong>0.0</strong> • 
+            Min: <strong>0.0</strong> • 
+            Max: <strong>0.0</strong>
+        </small></p>
+    </div>
+    
+
+    <h3>Top Risky Contracts</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contract ID</th>
+                <th>Risk Score</th>
+                <th>Grade</th>
+                <th>Δ vs Baseline</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td><code>out</code></td>
+                <td>0.0</td>
+                <td><span class="bucket info">Info</span></td>
+                <td class="delta neutral">
+                    0.0
+                </td>
+            </tr>
+            
+        </tbody>
+    </table>
+
+    <h3>All Contracts</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contract ID</th>
+                <th>Risk Score</th>
+                <th>Grade</th>
+                <th>Δ vs Baseline</th>
+                <th>Risk Distribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td><code>out</code></td>
+                <td>0.0</td>
+                <td><span class="bucket info">Info</span></td>
+                <td class="delta neutral">
+                    0.0
+                </td>
+                <td>
+                    
+                        
+                    
+                        
+                    
+                        
+                    
+                        
+                    
+                        
+                        <span class="bucket info" style="font-size: 12px; padding: 2px 6px;">Info: 5</span>
+                        
+                    
+                </td>
+            </tr>
+            
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Generated at: 2025-08-31T07:36:52.797970Z</p>
+        <p>Portfolio aggregation completed successfully.</p>
+    </div>
+</body>
+</html>

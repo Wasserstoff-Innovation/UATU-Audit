@@ -1,0 +1,43 @@
+# Portfolio Risk Report
+
+Aggregated risk assessment across all audited contracts.
+
+## Portfolio Overview
+
+**Overall Risk:** {{ "%.1f"|format(portfolio.summary.overall) }} ({{ portfolio.summary.grade }})
+
+{% if portfolio.summary.delta_overall != 0 %}
+**Δ vs Baseline:** {{ "%.1f"|format(portfolio.summary.delta_overall) }}
+{% endif %}
+
+**Risk Distribution:**
+{% for grade, count in portfolio.summary.buckets.items() %}
+{% if count > 0 %}- `{{ grade }}: {{ count }}`{% endif %}
+{% endfor %}
+
+{% if portfolio_trend %}
+**Risk Trend:** Latest: **{{ "%.1f"|format(portfolio_trend.meta.latest) }}**, Window: **{{ portfolio_trend.meta.count }}** (min **{{ "%.1f"|format(portfolio_trend.meta.min) }}**, max **{{ "%.1f"|format(portfolio_trend.meta.max) }}**)
+
+_See HTML report for inline sparkline._
+{% endif %}
+
+## Top Risky Contracts
+
+| Contract ID | Risk Score | Grade | Δ vs Baseline |
+|-------------|------------|-------|----------------|
+{% for contract in portfolio.summary.top_contracts %}
+| `{{ contract.id }}` | {{ "%.1f"|format(contract.overall) }} | {{ contract.grade }} | {{ "%.1f"|format(contract.delta) }} |
+{% endfor %}
+
+## All Contracts
+
+| Contract ID | Risk Score | Grade | Δ vs Baseline | Risk Distribution |
+|-------------|------------|-------|----------------|-------------------|
+{% for contract_id, contract in portfolio.by_contract.items() %}
+| `{{ contract_id }}` | {{ "%.1f"|format(contract.overall) }} | {{ contract.grade }} | {{ "%.1f"|format(contract.delta) }} | {% for grade, count in contract.buckets.items() %}{% if count > 0 %}{{ grade }}:{{ count }} {% endif %}{% endfor %} |
+{% endfor %}
+
+---
+
+*Generated at: {{ portfolio.generated_at }}*  
+*Portfolio aggregation completed successfully.*

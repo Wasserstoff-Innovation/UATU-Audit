@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Risk Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .overview { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .badge { display: inline-block; margin-right: 20px; vertical-align: top; }
+        .stats { display: inline-block; }
+        .buckets { margin-top: 15px; }
+        .bucket { display: inline-block; padding: 4px 12px; border-radius: 20px; margin-right: 8px; margin-bottom: 8px; color: white; font-weight: bold; }
+        .bucket.critical { background: #d32f2f; }
+        .bucket.high { background: #f57c00; }
+        .bucket.medium { background: #fbc02d; color: #333; }
+        .bucket.low { background: #0288d1; }
+        .bucket.info { background: #2e7d32; }
+        .trend { margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 8px; }
+        .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .table th { background: #f8f9fa; font-weight: 600; }
+        .delta { font-weight: bold; }
+        .delta.positive { color: #d32f2f; }
+        .delta.negative { color: #2e7d32; }
+        .delta.neutral { color: #666; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Portfolio Risk Report</h1>
+        <p>Aggregated risk assessment across all audited contracts</p>
+        {% if portfolio._validation == "invalid" %}
+        <div style="background: #ffebee; border: 1px solid #f44336; border-radius: 4px; padding: 12px; margin: 16px 0;">
+            <strong style="color: #d32f2f;">⚠️ Portfolio Schema Validation Failed</strong>
+            <p style="margin: 8px 0 0 0; color: #666;">See <code>portfolio.error.json</code> for details. Reports may be incomplete.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="overview">
+        <div class="badge">
+            {% if portfolio_badge %}
+            <img src="{{ portfolio_badge }}" alt="portfolio risk" />
+            {% endif %}
+        </div>
+        <div class="stats">
+            <h2>Portfolio Overview</h2>
+            <p><strong>Overall Risk:</strong> {{ portfolio.summary.overall }} ({{ portfolio.summary.grade }})</p>
+            {% if portfolio.summary.delta_overall != 0 %}
+            <p><strong>Δ vs Baseline:</strong> 
+                <span class="delta {% if portfolio.summary.delta_overall > 0 %}positive{% elif portfolio.summary.delta_overall < 0 %}negative{% else %}neutral{% endif %}">
+                    {% if portfolio.summary.delta_overall > 0 %}+{% endif %}{{ portfolio.summary.delta_overall }}
+                </span>
+            </p>
+            {% endif %}
+            
+            <div class="buckets">
+                <strong>Risk Distribution:</strong><br>
+                {% for grade, count in portfolio.summary.buckets.items() %}
+                    {% if count > 0 %}
+                    <span class="bucket {{ grade.lower() }}">{{ grade }}: {{ count }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if portfolio_trend %}
+    <div class="trend">
+        <h3>Portfolio Risk Trend (last {{ portfolio_trend.meta.count }} runs)</h3>
+        {% if portfolio_trend.svg_data_uri %}
+        <img src="{{ portfolio_trend.svg_data_uri }}" alt="portfolio trend" style="max-width: 100%;" />
+        {% endif %}
+        <p><small>
+            Latest: <strong>{{ "%.1f"|format(portfolio_trend.meta.latest) }}</strong> • 
+            Min: <strong>{{ "%.1f"|format(portfolio_trend.meta.min) }}</strong> • 
+            Max: <strong>{{ "%.1f"|format(portfolio_trend.meta.max) }}</strong>
+        </small></p>
+    </div>
+    {% endif %}
+
+    <h3>Top Risky Contracts</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contract ID</th>
+                <th>Risk Score</th>
+                <th>Grade</th>
+                <th>Δ vs Baseline</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract in portfolio.summary.top_contracts %}
+            <tr>
+                <td><code>{{ contract.id }}</code></td>
+                <td>{{ "%.1f"|format(contract.overall) }}</td>
+                <td><span class="bucket {{ contract.grade.lower() }}">{{ contract.grade }}</span></td>
+                <td class="delta {% if contract.delta > 0 %}positive{% elif contract.delta < 0 %}negative{% else %}neutral{% endif %}">
+                    {% if contract.delta > 0 %}+{% endif %}{{ contract.delta }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>All Contracts</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Contract ID</th>
+                <th>Risk Score</th>
+                <th>Grade</th>
+                <th>Δ vs Baseline</th>
+                <th>Risk Distribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract_id, contract in portfolio.by_contract.items() %}
+            <tr>
+                <td><code>{{ contract_id }}</code></td>
+                <td>{{ "%.1f"|format(contract.overall) }}</td>
+                <td><span class="bucket {{ contract.grade.lower() }}">{{ contract.grade }}</span></td>
+                <td class="delta {% if contract.delta > 0 %}positive{% elif contract.delta < 0 %}negative{% else %}neutral{% endif %}">
+                    {% if contract.delta > 0 %}+{% endif %}{{ contract.delta }}
+                </td>
+                <td>
+                    {% for grade, count in contract.buckets.items() %}
+                        {% if count > 0 %}
+                        <span class="bucket {{ grade.lower() }}" style="font-size: 12px; padding: 2px 6px;">{{ grade }}: {{ count }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Generated at: {{ portfolio.generated_at }}</p>
+        <p>Portfolio aggregation completed successfully.</p>
+    </div>
+</body>
+</html>

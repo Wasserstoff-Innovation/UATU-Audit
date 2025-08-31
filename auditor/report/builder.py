@@ -70,6 +70,35 @@ def build_report(outdir: Path) -> None:
     risk_summary = (risk or {}).get("summary", {})
     risk_by_fn = (risk or {}).get("by_function", {})
     
+    # ----- Risk trend data loading -----
+    risk_trend = None
+    trend_meta_path = outdir / "runs" / "risk" / "trend.meta.json"
+    if trend_meta_path.exists():
+        try:
+            trend_meta = json.loads(trend_meta_path.read_text())
+            history_path = outdir / "runs" / "risk" / "history.json"
+            if history_path.exists():
+                history = json.loads(history_path.read_text())
+                risk_trend = {
+                    "series": [(entry["ts"], entry["overall"]) for entry in history],
+                    "meta": trend_meta,
+                    "svg_data_uri": ""  # Will be populated if sparkline exists
+                }
+                
+                # Try to load sparkline data URI
+                sparkline_path = outdir / "sparkline-risk.svg"
+                if sparkline_path.exists():
+                    try:
+                        svg_content = sparkline_path.read_text()
+                        import base64
+                        svg_bytes = svg_content.encode('utf-8')
+                        data_uri = f"data:image/svg+xml;base64,{base64.b64encode(svg_bytes).decode('utf-8')}"
+                        risk_trend["svg_data_uri"] = data_uri
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    
     # build heatmap rows: list of dicts {contract, function, score, grade, delta, cats}
     heatmap = []
     stride_badges = {}
@@ -180,8 +209,8 @@ def build_report(outdir: Path) -> None:
         except Exception: 
             static_meta = {}
 
-    md = env.get_template("report.md.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges)
-    html = env.get_template("report.html.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges)
+    md = env.get_template("report.md.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges, risk_trend=risk_trend)
+    html = env.get_template("report.html.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges, risk_trend=risk_trend)
     (outdir / "report.md").write_text(md)
     (outdir / "report.html").write_text(html)
     # also write report.json placeholder

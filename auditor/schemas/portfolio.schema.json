@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "required": ["version","generated_at","summary","by_contract"],
+  "properties": {
+    "version": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "summary": {
+      "type": "object",
+      "required": ["overall","grade","delta_overall","buckets","top_contracts"],
+      "properties": {
+        "overall": {"type": "number"},
+        "grade": {"type": "string"},
+        "delta_overall": {"type": "number"},
+        "buckets": {
+          "type": "object",
+          "properties": {
+            "Critical":{"type":"integer"},
+            "High":{"type":"integer"},
+            "Medium":{"type":"integer"},
+            "Low":{"type":"integer"},
+            "Info":{"type":"integer"}
+          }
+        },
+        "top_contracts": {
+          "type": "array",
+          "items": {
+            "type":"object",
+            "required":["id","overall","grade","delta"],
+            "properties":{
+              "id":{"type":"string"},
+              "overall":{"type":"number"},
+              "grade":{"type":"string"},
+              "delta":{"type":"number"}
+            }
+          }
+        }
+      }
+    },
+    "by_contract": {
+      "type":"object",
+      "additionalProperties":{
+        "type":"object",
+        "required":["overall","grade","delta","buckets"],
+        "properties":{
+          "overall":{"type":"number"},
+          "grade":{"type":"string"},
+          "delta":{"type":"number"},
+          "buckets":{
+            "type": "object",
+            "properties": {
+              "Critical":{"type":"integer"},
+              "High":{"type":"integer"},
+              "Medium":{"type":"integer"},
+              "Low":{"type":"integer"},
+              "Info":{"type":"integer"}
+            }
+          }
+        }
+      }
+    }
+  }
+}
