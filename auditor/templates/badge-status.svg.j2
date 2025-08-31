@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="182" height="28" role="img" aria-label="{{ label }}: {{ text }}">
+  <linearGradient id="g" x2="0" y2="100%">
+    <stop offset="0" stop-color="#fff" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="m"><rect width="182" height="28" rx="4" fill="#fff"/></mask>
+  <g mask="url(#m)">
+    <rect width="72" height="28" fill="#0b1b2b"/>
+    <rect x="72" width="110" height="28" fill="{{ color }}"/>
+    <rect width="182" height="28" fill="url(#g)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial" font-size="12">
+    <text x="36" y="19" fill="#010101" fill-opacity=".3">{{ label }}</text>
+    <text x="36" y="18">{{ label }}</text>
+    <text x="127" y="19" fill="#010101" fill-opacity=".3">{{ text }}</text>
+    <text x="127" y="18">{{ text }}</text>
+  </g>
+</svg>

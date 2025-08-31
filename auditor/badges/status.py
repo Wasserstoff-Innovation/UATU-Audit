@@ -5,77 +5,87 @@ Status badge system for UatuAudit - Comprehensive risk assessment badges.
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 
-# Status badge definitions with exact colors and conditions
+# Uatu Status Badge System - Professional Palette
 STATUS_BADGES = {
     # Primary badges (evaluate in order)
     "critical": {
         "label": "Critical",
-        "color": "#d32f2f",
+        "color": "#d32f2f",  # Critical red
         "description": "Critical security issues detected",
         "priority": 1
     },
     "dangerous": {
         "label": "Dangerous",
-        "color": "#f57c00",
+        "color": "#f57c00",  # Dangerous orange
         "description": "High risk or multiple test failures",
         "priority": 2
     },
     "needs_fixes": {
         "label": "Needs Fixes",
-        "color": "#fbc02d",
+        "color": "#fbc02d",  # Needs fixes yellow
         "description": "Some tests fail or EoP issues detected",
         "priority": 3
     },
     "passed_audit": {
         "label": "Passed Audit",
-        "color": "#0288d1",
+        "color": "#0288d1",  # Passed audit blue
         "description": "Acceptable risk, tests pass",
         "priority": 4
     },
     "ready_to_go": {
         "label": "Ready to Go",
-        "color": "#2e7d32",
+        "color": "#2e7d32",  # Ready to go green
         "description": "Low risk, all tests pass, no STRIDE issues",
         "priority": 5
     },
     
-    # Secondary badges (can be combined with primary)
+    # Secondary badges (attach as small pills under primary)
     "trend_worsening": {
         "label": "Trend Worsening",
-        "color": "#f57c00",
+        "color": "#f57c00",  # Orange for warnings
         "description": "Risk increasing vs baseline",
         "priority": 6
     },
     "static_failed": {
         "label": "Static Failed",
-        "color": "#6e7781",
+        "color": "#6e7781",  # Neutral gray
         "description": "Slither crashed or timed out",
         "priority": 7
     },
     "tests_incomplete": {
         "label": "Tests Incomplete",
-        "color": "#6e7781",
+        "color": "#6e7781",  # Neutral gray
         "description": "No tests generated or runner failed",
         "priority": 8
     },
     "gas_heavy": {
         "label": "Gas Heavy",
-        "color": "#6e7781",
+        "color": "#6e7781",  # Neutral gray
         "description": "Any test gas exceeds threshold",
         "priority": 9
     },
     "coverage_low": {
         "label": "Coverage Low",
-        "color": "#6e7781",
+        "color": "#6e7781",  # Neutral gray
         "description": "Generated journeys < public/external functions",
         "priority": 10
     },
     "llm_assisted": {
         "label": "LLM Assisted",
-        "color": "#7b1fa2",
+        "color": "#7b1fa2",  # Purple for AI
         "description": "AI-powered analysis enabled",
         "priority": 11
     }
+}
+
+# Uatu Brand Colors
+UATU_COLORS = {
+    "ink_navy": "#0b1b2b",      # Background
+    "deep_slate": "#17293c",    # Cards
+    "gold_glow": "#f7d046",     # Accents
+    "border": "#1f3b57",        # Borders
+    "text_primary": "#e9eef3",  # Primary text
+    "text_secondary": "#a0aec0" # Secondary text
 }
 
 def determine_status_badges(
