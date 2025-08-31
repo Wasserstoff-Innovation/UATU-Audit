@@ -1,0 +1,197 @@
+{
+  "version": "1",
+  "weights": {
+    "static": {
+      "critical": 10,
+      "high": 7,
+      "medium": 4,
+      "low": 1,
+      "info": 0.5
+    },
+    "stride": {
+      "elevation_of_privilege": 7,
+      "tampering": 6,
+      "information_disclosure": 6,
+      "spoofing": 6,
+      "denial_of_service": 3,
+      "repudiation": 2
+    },
+    "tests": {
+      "eop_failed": 8,
+      "neg_failed": 5,
+      "stress_failed": 3
+    },
+    "gas": {
+      "heavy_threshold": 200000,
+      "penalty": 1
+    },
+    "scaling": {
+      "function_cap": 100,
+      "journey_cap": 100
+    }
+  },
+  "by_function": {
+    "Sample.ping": {
+      "contract": "Sample",
+      "function": "ping",
+      "score": 0.0,
+      "grade": "Info",
+      "evidence": {
+        "static_findings": [],
+        "stride_categories": [],
+        "test_metrics": {
+          "eop_failed": 0,
+          "neg_failed": 0,
+          "stress_failed": 0
+        },
+        "gas": {}
+      },
+      "delta": 0.0
+    },
+    "Sample.getCount": {
+      "contract": "Sample",
+      "function": "getCount",
+      "score": 0.0,
+      "grade": "Info",
+      "evidence": {
+        "static_findings": [],
+        "stride_categories": [],
+        "test_metrics": {
+          "eop_failed": 0,
+          "neg_failed": 0,
+          "stress_failed": 0
+        },
+        "gas": {}
+      },
+      "delta": 0.0
+    },
+    "Sample.getUserCount": {
+      "contract": "Sample",
+      "function": "getUserCount",
+      "score": 0.0,
+      "grade": "Info",
+      "evidence": {
+        "static_findings": [],
+        "stride_categories": [],
+        "test_metrics": {
+          "eop_failed": 0,
+          "neg_failed": 0,
+          "stress_failed": 0
+        },
+        "gas": {}
+      },
+      "delta": 0.0
+    },
+    "Sample.reset": {
+      "contract": "Sample",
+      "function": "reset",
+      "score": 0.0,
+      "grade": "Info",
+      "evidence": {
+        "static_findings": [],
+        "stride_categories": [],
+        "test_metrics": {
+          "eop_failed": 0,
+          "neg_failed": 0,
+          "stress_failed": 0
+        },
+        "gas": {}
+      },
+      "delta": 0.0
+    },
+    "Sample.batchPing": {
+      "contract": "Sample",
+      "function": "batchPing",
+      "score": 0.0,
+      "grade": "Info",
+      "evidence": {
+        "static_findings": [],
+        "stride_categories": [],
+        "test_metrics": {
+          "eop_failed": 0,
+          "neg_failed": 0,
+          "stress_failed": 0
+        },
+        "gas": {}
+      },
+      "delta": 0.0
+    }
+  },
+  "by_journey": {
+    "happy_Sample_ping": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    },
+    "happy_Sample_getCount": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    },
+    "happy_Sample_getUserCount": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    },
+    "happy_Sample_reset": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    },
+    "happy_Sample_batchPing": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    },
+    "stress_Sample_batchPing": {
+      "score": 0,
+      "grade": "Info",
+      "functions": [],
+      "delta": 0.0
+    }
+  },
+  "summary": {
+    "overall": 0.0,
+    "grade": "Info",
+    "buckets": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 0,
+      "Low": 0,
+      "Info": 5
+    },
+    "top_functions": [
+      {
+        "key": "Sample.ping",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "key": "Sample.getCount",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "key": "Sample.getUserCount",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "key": "Sample.reset",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "key": "Sample.batchPing",
+        "score": 0.0,
+        "grade": "Info"
+      }
+    ],
+    "delta_overall": 0.0
+  }
+}

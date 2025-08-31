@@ -165,6 +165,23 @@ th{background:#f5f5f5}
   &nbsp;&nbsp;<b>Grade:</b> {{ risk_summary.grade if risk_summary else "N/A" }}
 </p>
 
+{% if risk_summary and risk_summary.buckets %}
+<p><b>Risk Profile:</b>
+  {% for grade, count in risk_summary.buckets.items() %}
+    {% if count > 0 %}
+      <span style="display:inline-block;padding:2px 6px;border-radius:10px;margin-right:4px;background:
+        {% if grade == 'Critical' %}#ffcccc
+        {% elif grade == 'High' %}#ffd6cc
+        {% elif grade == 'Medium' %}#fff0cc
+        {% elif grade == 'Low' %}#f2ffcc
+        {% else %}#e6ffe6{% endif %};">
+        {{ grade }}: {{ count }}
+      </span>
+    {% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+
 {% if risk and risk.summary.top_functions %}
 <h3>Top 10 Risky Functions</h3>
 <table border="1" cellpadding="6" cellspacing="0">

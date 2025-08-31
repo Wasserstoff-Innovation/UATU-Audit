@@ -197,9 +197,18 @@ def score(
     # summary
     fn_scores = [v["score"] for v in by_function.values()]
     overall = round(sum(fn_scores)/len(fn_scores), 1) if fn_scores else 0.0
+    
+    # grade bucket counts
+    buckets = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0, "Info": 0}
+    for v in by_function.values():
+        grade = v["grade"]
+        if grade in buckets:
+            buckets[grade] += 1
+    
     summary = {
         "overall": overall,
         "grade": _grade(overall),
+        "buckets": buckets,
         "top_functions": sorted(
             [{"key":k, "score":v["score"], "grade":v["grade"]} for k,v in by_function.items()],
             key=lambda x: x["score"], reverse=True
@@ -211,6 +220,13 @@ def score(
     for k, v in by_function.items():
         prev = (base_by_fn.get(k) or {}).get("score", 0.0)
         v["delta"] = round(v["score"] - float(prev), 1)
+    
+    # per-journey deltas
+    base_by_journey = (baseline or {}).get("by_journey", {})
+    for k, v in by_journey.items():
+        prev = (base_by_journey.get(k) or {}).get("score", 0.0)
+        v["delta"] = round(v["score"] - float(prev), 1)
+    
     # overall delta
     base_overall = (baseline or {}).get("summary", {}).get("overall", 0.0)
     summary["delta_overall"] = round(summary["overall"] - float(base_overall), 1)

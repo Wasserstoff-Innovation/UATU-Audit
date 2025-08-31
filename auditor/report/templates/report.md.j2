@@ -25,21 +25,25 @@
 {%- endif %}  
 **Grade:** {{ risk_summary.grade if risk_summary else "N/A" }}
 
+{% if risk_summary and risk_summary.buckets %}
+**Risk Profile:** {% for grade, count in risk_summary.buckets.items() %}{% if count > 0 %}`{{ grade }}: {{ count }}` {% endif %}{% endfor %}
+{% endif %}
+
 ### Top 10 Risky Functions
 {% if risk and risk.summary.top_functions %}
-| # | Function | Score | Grade |
-|---|---|---:|---|
+| # | Function | Score | Δ | Grade |
+|---|---|---:|---:|---|
 {% for item in risk.summary.top_functions -%}
-| {{ loop.index }} | `{{ item.key }}` | {{ "%.1f"|format(item.score) }} | {{ item.grade }} |
+| {{ loop.index }} | `{{ item.key }}` | {{ "%.1f"|format(item.score) }} | {{ "%.1f"|format(risk.by_function[item.key].delta if risk and risk.by_function and item.key in risk.by_function and 'delta' in risk.by_function[item.key] else 0.0) }} | {{ item.grade }} |
 {% endfor %}
 {% else %}No high-risk functions identified.{% endif %}
 
 ### Risk Heatmap (compact)
 {% if risk_heatmap and risk_heatmap|length > 0 %}
-| Contract | Function | Score | Grade | STRIDE Cats |
-|---|---|---:|---|---|
+| Contract | Function | Score | Δ | Grade | STRIDE |
+|---|---|---:|---:|---|---|
 {% for row in risk_heatmap -%}
-| {{ row.contract }} | `{{ row.function }}` | {{ "%.1f"|format(row.score) }} | {{ row.grade }} | {{ row.cats }} |
+| {{ row.contract }} | `{{ row.function }}` | {{ "%.1f"|format(row.score) }} | {{ "%.1f"|format(row.delta if row.delta is defined else 0.0) }} | {{ row.grade }} | {{ row.cats|join(", ") }} |
 {% endfor %}
 {% else %}No risk data available.{% endif %}
 

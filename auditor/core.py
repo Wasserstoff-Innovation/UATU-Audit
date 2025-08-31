@@ -175,7 +175,6 @@ class Orchestrator:
         # Load baseline if provided
         base = None
         if self.risk_baseline:
-            from pathlib import Path
             bp = Path(self.risk_baseline)
             if bp.exists():
                 base = __import__("json").loads(bp.read_text())

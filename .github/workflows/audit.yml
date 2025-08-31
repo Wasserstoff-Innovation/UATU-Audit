@@ -1,0 +1,150 @@
+name: Contract Audit
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover contracts
+        id: disc
+        run: |
+          python3 scripts/discover_contracts.py > contracts.json
+          cat contracts.json
+      - name: Set matrix
+        id: set
+        run: |
+          echo "matrix=$(cat contracts.json | jq -c '.items')" >> $GITHUB_OUTPUT
+
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image
+        run: docker build -t contract-auditor .
+      - name: Tag output
+        id: tag
+        run: echo "image=contract-auditor" >> $GITHUB_OUTPUT
+
+  audit:
+    needs: [discover, build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure baseline folder
+        run: mkdir -p baseline
+
+      - name: Run audit (compare with baseline if PR)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          OUT="out"
+          BASE="baseline/${{ matrix.id }}.risk.json"
+          BASE_ARG=""
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -f "$BASE" ]; then
+            BASE_ARG="--risk-baseline $BASE"
+          fi
+          docker run --rm \
+            -e OPENAI_API_KEY -e ANTHROPIC_API_KEY \
+            -v "$PWD:/work" -w /work ${{ needs.build.outputs.image }} \
+            audit "${{ matrix.path }}" --kind "${{ matrix.kind }}" --out "$OUT" \
+              --risk on --risk-export csv \
+              --slither auto --eop auto --llm off $BASE_ARG
+          ts=$(ls -1 out | tail -n1)
+          echo "TS=$ts" >> $GITHUB_ENV
+
+      - name: Gate on risk thresholds
+        run: |
+          RISK="out/$TS/runs/risk/risk.json"
+          overall=$(jq -r '.summary.overall//0' "$RISK")
+          delta=$(jq -r '.summary.delta_overall//0' "$RISK")
+          # thresholds (tune per repo policy)
+          MAX_OVERALL=30
+          MAX_DELTA=5
+          echo "overall=$overall delta=$delta"
+          bad=0
+          awk "BEGIN {exit !($overall>$MAX_OVERALL)}" || bad=1
+          awk "BEGIN {exit !($delta>$MAX_DELTA)}"    || bad=$bad
+          if [ $bad -eq 1 ]; then
+            echo "::error::${{ matrix.id }} risk exceeded: overall>$MAX_OVERALL or delta>$MAX_DELTA."
+            exit 1
+          fi
+
+      - name: Upload artifacts (per contract)
+        uses: actions/upload-artifact@v4
+        with:
+          name: "audit-${{ matrix.id }}"
+          path: |
+            out/$TS/report.html
+            out/$TS/report.md
+            out/$TS/runs/risk/risk.json
+            out/$TS/runs/risk/heatmap.csv
+            out/$TS/runs/tests/*.json
+
+      - name: PR summary comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: "audit-${{ matrix.id }}"
+          message: |
+            **Audit – ${{ matrix.id }}**
+            - Overall: `$(jq -r '.summary.overall' out/$TS/runs/risk/risk.json)`
+            - Δ vs baseline: `$(jq -r '.summary.delta_overall//0' out/$TS/runs/risk/risk.json)`
+            - Risk Profile: `$(jq -r '.summary.buckets | to_entries | map(select(.value > 0)) | map("\(.key): \(.value)") | join(", ")' out/$TS/runs/risk/risk.json)`
+            - Top risky functions:
+              $(jq -r '.summary.top_functions[0:5][] | "* \(.key): \(.score)"' out/$TS/runs/risk/risk.json)
+            - Artifacts: **audit-${{ matrix.id }}**
+
+  refresh-baseline:
+    if: github.event_name == 'push'
+    needs: [discover, build, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy latest risks to baseline
+        run: |
+          # For each matrix item, pick the last timestamp and copy to baseline/<id>.risk.json
+          python3 - << 'PY'
+          import json, os, glob, shutil
+          mx = json.loads(os.environ.get('MATRIX', '[]'))
+          for it in mx:
+              outs = sorted(glob.glob('out/*/runs/risk/risk.json'))
+              if outs:
+                  dst = f"baseline/{it['id']}.risk.json"
+                  os.makedirs('baseline', exist_ok=True)
+                  shutil.copyfile(outs[-1], dst)
+                  print("Updated", dst)
+          PY
+        env:
+          MATRIX: ${{ needs.discover.outputs.matrix }}
+      - name: Commit baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add baseline/*.risk.json || true
+          git commit -m "chore: refresh baselines" || echo "no baseline changes"
+          git push || true

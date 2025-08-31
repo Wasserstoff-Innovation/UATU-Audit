@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "summary": {
+    "overall": 0.0,
+    "grade": "Info",
+    "buckets": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 0,
+      "Low": 0,
+      "Info": 1
+    },
+    "delta_overall": 0.0
+  },
+  "by_function": {},
+  "by_journey": {}
+}
