@@ -81,6 +81,15 @@ jobs:
               --slither auto --eop auto --llm off $BASE_ARG
           ts=$(ls -1 out | tail -n1)
           echo "TS=$ts" >> $GITHUB_ENV
+          
+          # Generate PDF report
+          echo "Generating PDF report..."
+          docker run --rm \
+            -e OPENAI_API_KEY -e ANTHROPIC_API_KEY \
+            -v "$PWD:/work" -w /work ${{ needs.build.outputs.image }} \
+            auditor audit "${{ matrix.path }}" --kind "${{ matrix.kind }}" --out "$OUT" \
+              --risk on --risk-export csv --pdf on \
+              --slither auto --eop auto --llm off $BASE_ARG
 
       - name: Gate on risk thresholds
         run: |
@@ -126,6 +135,7 @@ jobs:
           path: |
             out/$TS/report.html
             out/$TS/report.md
+            out/$TS/report.pdf
             out/$TS/runs/risk/risk.json
             out/$TS/runs/risk/heatmap.csv
             out/$TS/runs/tests/*.json
@@ -195,7 +205,7 @@ jobs:
               --inputs $(tr '\n' ' ' < risk-files.txt) \
               --out out-portfolio \
               --baseline baseline/portfolio.risk.json \
-              --trend on --trend-n 10 --badge on --export csv
+              --trend on --trend-n 10 --badge on --export csv --pdf on
       
       - name: Upload portfolio artifacts
         uses: actions/upload-artifact@v4
@@ -288,6 +298,8 @@ jobs:
             
             Trend (${{ steps.portfolio.outputs.count }} runs):  
             ![portfolio trend](data:image/svg+xml;base64,${{ steps.viz.outputs.spark }})
+            
+            **Reports:** [HTML](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts) | [PDF](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts) | [CSV](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
             
             Top risky contracts:
             ${{ steps.portfolio.outputs.top_contracts }}

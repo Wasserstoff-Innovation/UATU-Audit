@@ -5,56 +5,76 @@ Status badge system for UatuAudit - Comprehensive risk assessment badges.
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 
-# Status badge definitions
+# Status badge definitions with exact colors and conditions
 STATUS_BADGES = {
-    "ready_to_go": {
-        "label": "Ready to Go",
-        "color": "#2e7d32",
-        "description": "Low risk, all tests pass, no critical issues"
-    },
-    "passed_audit": {
-        "label": "Passed Audit",
-        "color": "#0288d1",
-        "description": "Acceptable risk, tests pass"
-    },
-    "needs_fixes": {
-        "label": "Needs Fixes",
-        "description": "Some tests fail or EoP issues detected"
+    # Primary badges (evaluate in order)
+    "critical": {
+        "label": "Critical",
+        "color": "#d32f2f",
+        "description": "Critical security issues detected",
+        "priority": 1
     },
     "dangerous": {
         "label": "Dangerous",
         "color": "#f57c00",
-        "description": "High risk or multiple test failures"
+        "description": "High risk or multiple test failures",
+        "priority": 2
     },
-    "critical": {
-        "label": "Critical",
-        "color": "#d32f2f",
-        "description": "Critical security issues detected"
+    "needs_fixes": {
+        "label": "Needs Fixes",
+        "color": "#fbc02d",
+        "description": "Some tests fail or EoP issues detected",
+        "priority": 3
     },
+    "passed_audit": {
+        "label": "Passed Audit",
+        "color": "#0288d1",
+        "description": "Acceptable risk, tests pass",
+        "priority": 4
+    },
+    "ready_to_go": {
+        "label": "Ready to Go",
+        "color": "#2e7d32",
+        "description": "Low risk, all tests pass, no STRIDE issues",
+        "priority": 5
+    },
+    
+    # Secondary badges (can be combined with primary)
     "trend_worsening": {
         "label": "Trend Worsening",
         "color": "#f57c00",
-        "description": "Risk increasing vs baseline"
+        "description": "Risk increasing vs baseline",
+        "priority": 6
     },
-    "static_incomplete": {
-        "label": "Static Incomplete",
+    "static_failed": {
+        "label": "Static Failed",
         "color": "#6e7781",
-        "description": "Static analysis not fully completed"
+        "description": "Slither crashed or timed out",
+        "priority": 7
     },
     "tests_incomplete": {
         "label": "Tests Incomplete",
         "color": "#6e7781",
-        "description": "Test execution not fully completed"
+        "description": "No tests generated or runner failed",
+        "priority": 8
+    },
+    "gas_heavy": {
+        "label": "Gas Heavy",
+        "color": "#6e7781",
+        "description": "Any test gas exceeds threshold",
+        "priority": 9
+    },
+    "coverage_low": {
+        "label": "Coverage Low",
+        "color": "#6e7781",
+        "description": "Generated journeys < public/external functions",
+        "priority": 10
     },
     "llm_assisted": {
         "label": "LLM Assisted",
-        "color": "#6f42c1",
-        "description": "AI-powered analysis enabled"
-    },
-    "outdated_baseline": {
-        "label": "Outdated Baseline",
-        "color": "#6e7781",
-        "description": "Baseline data is old"
+        "color": "#7b1fa2",
+        "description": "AI-powered analysis enabled",
+        "priority": 11
     }
 }
 
@@ -64,14 +84,17 @@ def determine_status_badges(
     eop_results: Dict[str, Any] = None,
     llm_enabled: bool = False,
     static_mode: str = "host",
-    baseline_age_days: int = None
-) -> List[Dict[str, Any]]:
+    baseline_age_days: int = None,
+    gas_threshold: int = 300000
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """
     Determine applicable status badges based on audit results.
     
-    Returns list of badges in priority order (first is primary).
+    Returns tuple of (primary_badge, secondary_badges).
+    Primary badge is one of the first 5; secondary badges can be combined.
     """
-    badges = []
+    primary_badge = None
+    secondary_badges = []
     
     # Extract key metrics
     overall = risk_summary.get('overall', 0.0)
@@ -79,12 +102,12 @@ def determine_status_badges(
     delta = risk_summary.get('delta_overall', 0.0)
     
     # Test status
-    tests_passed = True
+    tests_failed = 0
+    tests_total = 0
     if test_runs:
         for run in test_runs.get('runs', []):
-            if run.get('failed', 0) > 0:
-                tests_passed = False
-                break
+            tests_failed += run.get('failed', 0)
+            tests_total += run.get('total', 0)
     
     # EoP status
     eop_issues = False
@@ -94,50 +117,62 @@ def determine_status_badges(
             for item in eop_results.get('items', [])
         )
     
-    # Primary status determination
-    if (grade in ['Info', 'Low'] and 
-        overall <= 25 and 
-        tests_passed and 
-        not eop_issues and 
-        delta >= 0):
-        badges.append(STATUS_BADGES['ready_to_go'])
+    # Gas consumption check
+    gas_heavy = False
+    if test_runs:
+        for run in test_runs.get('runs', []):
+            for test in run.get('tests', []):
+                if test.get('gas_used', 0) > gas_threshold:
+                    gas_heavy = True
+                    break
     
-    elif (grade in ['Info', 'Low', 'Medium'] and 
-          overall <= 50 and 
-          tests_passed):
-        badges.append(STATUS_BADGES['passed_audit'])
+    # STRIDE categories check (for Ready to Go)
+    stride_flagged = False
+    if risk_summary.get('by_function'):
+        for func_data in risk_summary['by_function'].values():
+            if func_data.get('evidence', {}).get('stride_categories'):
+                stride_flagged = True
+                break
     
-    elif (grade in ['High', 'Critical'] or 
-          overall > 75):
-        badges.append(STATUS_BADGES['critical'])
-    
-    elif not tests_passed or eop_issues:
-        badges.append(STATUS_BADGES['needs_fixes'])
-    
+    # Primary badge determination (evaluate in order)
+    if overall >= 85 or (tests_failed > 0 and overall >= 70):
+        primary_badge = STATUS_BADGES['critical']
+    elif overall >= 70:
+        primary_badge = STATUS_BADGES['dangerous']
+    elif overall >= 50 or eop_issues:
+        primary_badge = STATUS_BADGES['needs_fixes']
+    elif overall < 50 and tests_failed == 0:
+        primary_badge = STATUS_BADGES['passed_audit']
+    elif overall < 25 and tests_failed == 0 and not stride_flagged:
+        primary_badge = STATUS_BADGES['ready_to_go']
     else:
-        badges.append(STATUS_BADGES['dangerous'])
+        primary_badge = STATUS_BADGES['passed_audit']  # fallback
     
     # Secondary badges
-    if delta > 5:  # Assuming MAX_DELTA = 5
-        badges.append(STATUS_BADGES['trend_worsening'])
+    if delta > 5:
+        secondary_badges.append(STATUS_BADGES['trend_worsening'])
     
-    if static_mode != "host":
-        badges.append(STATUS_BADGES['static_incomplete'])
+    if static_mode != "host" or (test_runs and not test_runs.get('slither_success', True)):
+        secondary_badges.append(STATUS_BADGES['static_failed'])
     
-    if not test_runs or not tests_passed:
-        badges.append(STATUS_BADGES['tests_incomplete'])
+    if not test_runs or tests_total == 0:
+        secondary_badges.append(STATUS_BADGES['tests_incomplete'])
+    
+    if gas_heavy:
+        secondary_badges.append(STATUS_BADGES['gas_heavy'])
+    
+    # Coverage check (simplified - would need journey metadata)
+    # if generated_journeys < public_external_functions:
+    #     secondary_badges.append(STATUS_BADGES['coverage_low'])
     
     if llm_enabled:
-        badges.append(STATUS_BADGES['llm_assisted'])
+        secondary_badges.append(STATUS_BADGES['llm_assisted'])
     
-    if baseline_age_days and baseline_age_days > 30:
-        badges.append(STATUS_BADGES['outdated_baseline'])
-    
-    return badges
+    return primary_badge, secondary_badges
 
-def get_primary_status(badges: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Get the primary (first) status badge."""
-    return badges[0] if badges else STATUS_BADGES['passed_audit']
+def get_primary_status(primary_badge: Dict[str, Any], secondary_badges: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Get the primary status badge."""
+    return primary_badge if primary_badge else STATUS_BADGES['passed_audit']
 
 def render_status_badge(badge: Dict[str, Any], size: str = "normal") -> str:
     """Render a status badge as HTML."""
@@ -171,19 +206,29 @@ def render_status_badge(badge: Dict[str, Any], size: str = "normal") -> str:
     
     return f'<span class="status-badge" style="{style}">{label}</span>'
 
-def get_status_summary(badges: List[Dict[str, Any]]) -> str:
+def render_status_badges(primary_badge: Dict[str, Any], secondary_badges: List[Dict[str, Any]] = None) -> str:
+    """Render primary and secondary status badges as HTML."""
+    html = render_status_badge(primary_badge, "large")
+    
+    if secondary_badges:
+        html += '<div style="margin-top: 0.5cm;">'
+        for badge in secondary_badges:
+            html += render_status_badge(badge, "normal")
+            html += ' '
+        html += '</div>'
+    
+    return html
+
+def get_status_summary(primary_badge: Dict[str, Any], secondary_badges: List[Dict[str, Any]] = None) -> str:
     """Get a human-readable summary of status badges."""
-    if not badges:
+    if not primary_badge:
         return "Status assessment incomplete"
     
-    primary = badges[0]
-    secondary = badges[1:] if len(badges) > 1 else []
+    summary = f"Primary: {primary_badge['label']}"
+    if primary_badge.get('description'):
+        summary += f" - {primary_badge['description']}"
     
-    summary = f"Primary: {primary['label']}"
-    if primary.get('description'):
-        summary += f" - {primary['description']}"
-    
-    if secondary:
-        summary += f". Additional: {', '.join(b['label'] for b in secondary)}"
+    if secondary_badges:
+        summary += f". Additional: {', '.join(b['label'] for b in secondary_badges)}"
     
     return summary
