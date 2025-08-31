@@ -1,11 +1,24 @@
 # UatuAudit - Multi-Chain Smart Contract Security Auditor
 
-UatuAudit is a comprehensive, STRIDE-driven security auditing framework for smart contracts across multiple blockchain platforms. It combines static analysis, dynamic testing, and threat modeling to provide thorough security assessments of blockchain applications.
+UatuAudit is a **production-grade, portfolio-aware security auditing framework** for smart contracts across multiple blockchain platforms. It combines static analysis, dynamic testing, threat modeling, and **portfolio risk aggregation** to provide comprehensive security assessments of your entire contract portfolio.
+
+## 🚀 **What's New: Portfolio Risk Aggregation**
+
+Every PR now shows both **individual contract risks** AND **portfolio-level risk management** with:
+- 🎯 **Risk Badges** - Visual risk indicators in PR comments
+- 📈 **Risk Trends** - Sparklines showing risk evolution over time  
+- 📊 **Portfolio Aggregation** - Risk roll-up across all contracts
+- 🛡️ **CI Gating** - PRs blocked on configurable risk thresholds
+- 📋 **Enhanced Reports** - HTML/MD with comprehensive risk analysis
+- 📁 **CSV Export** - BI-ready data with contract metadata
+- 🔄 **Baseline Tracking** - Risk evolution monitoring vs historical baselines
 
 ## Features
 
 - **Multi-Chain Support**: Analyze contracts on EVM-compatible chains (Ethereum, BSC, Polygon) and Stellar/Soroban
 - **STRIDE Threat Modeling**: Automated threat categorization using the STRIDE framework (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
+- **Portfolio Risk Management**: Aggregate risk across all contracts with visual dashboards and trend analysis
+- **CI/CD Integration**: GitHub Actions with matrix workflows, risk gating, and automatic baseline management
 - **Automated Test Generation**: Creates comprehensive test suites including happy path, negative, and stress tests
 - **Static Analysis Integration**: Leverages Slither for deep code analysis and vulnerability detection
 - **Dynamic Testing**: Executes generated tests using Foundry (EVM) or Cargo (Stellar)
@@ -56,6 +69,18 @@ auditor audit 0x1234567890abcdef... --kind evm
 auditor audit ./path/to/rust/project --kind stellar
 ```
 
+### Portfolio Aggregation
+
+```bash
+# Aggregate risk across all contracts
+auditor aggregate --inputs "out/*/runs/risk/risk.json" --out out-portfolio
+
+# With baseline comparison and trend analysis
+auditor aggregate --inputs "out/*/runs/risk/risk.json" \
+  --out out-portfolio --baseline baseline/portfolio.risk.json \
+  --trend on --badge on --export csv
+```
+
 ### Command Options
 
 ```bash
@@ -67,6 +92,12 @@ Arguments:
 Options:
   --kind TEXT              Chain type: evm | stellar (default: evm)
   --out TEXT               Output directory (default: out)
+  --risk TEXT              Risk scoring: on | off (default: on)
+  --risk-baseline TEXT     Path to baseline risk.json for comparison
+  --risk-export TEXT       CSV export: csv | none (default: csv)
+  --badge TEXT             Risk badge generation: on | off (default: on)
+  --trend TEXT             Risk trend analysis: on | off (default: on)
+  --trend-n INTEGER        Trend window size (default: 10)
   --llm TEXT               LLM augmentation: on | off (default: off)
   --slither TEXT           Static analysis mode: auto | host | stub (default: auto)
   --eop TEXT               EoP test gating: auto | stride | heuristic | both | off (default: auto)
@@ -172,6 +203,8 @@ out/YYYYMMDD_HHMMSS/
 ├── tests.json              # Generated test metadata
 ├── report.html             # Interactive HTML report
 ├── report.md               # Markdown report
+├── badge-risk.svg          # Risk badge visualization
+├── sparkline-risk.svg      # Risk trend sparkline
 ├── work/                   # Working directory
 │   └── src/               # Contract source files
 ├── tests/                  # Generated test suites
@@ -183,8 +216,28 @@ out/YYYYMMDD_HHMMSS/
     ├── static/            # Static analysis results
     │   ├── slither.json
     │   └── metadata.json
+    ├── risk/              # Risk assessment data
+    │   ├── risk.json      # Risk scores and grades
+    │   ├── heatmap.csv    # Risk heatmap export
+    │   └── history.json   # Risk trend history
     └── tests/             # Test execution results
         └── *.json
+```
+
+### Portfolio Output
+
+Portfolio aggregation creates:
+
+```
+out-portfolio/YYYYMMDD_HHMMSS/
+├── portfolio.json           # Portfolio risk summary
+├── portfolio.heatmap.csv    # Contract-level risk data
+├── portfolio.report.html    # Portfolio HTML report
+├── portfolio.report.md      # Portfolio markdown report
+├── badge-portfolio.svg      # Portfolio risk badge
+├── sparkline-portfolio.svg  # Portfolio trend sparkline
+├── portfolio.history.json   # Portfolio risk history
+└── portfolio.trend.meta.json # Trend metadata
 ```
 
 ## Test Categories
@@ -250,12 +303,21 @@ Apache License 2.0 - See [LICENSE](LICENSE) file for details.
 
 This tool provides automated security analysis but should not replace professional security audits. Always conduct thorough manual reviews and testing before deploying contracts to production networks.
 
+## Documentation
+
+- **Configuration**: `docs/config.md` - Production defaults and settings
+- **Post-Launch Runbook**: `docs/post-launch-runbook.md` - Daily operations
+- **Quick Reference**: `docs/quick-reference.md` - Common commands and troubleshooting
+- **Production Handover**: `docs/production-handover.md` - Handover overview
+- **Ops One-Pager**: `docs/ops-one-pager.md` - Internal wiki reference
+
 ## Support
 
 For issues, feature requests, or questions:
 - Open an issue on GitHub
 - Review existing documentation
 - Check example contracts for usage patterns
+- Consult the production runbook for operational issues
 
 ---
 

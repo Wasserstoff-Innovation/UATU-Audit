@@ -95,9 +95,15 @@ jobs:
           awk "BEGIN {exit !($overall>$MAX_OVERALL)}" || bad=1
           awk "BEGIN {exit !($delta>$MAX_DELTA)}"    || bad=$bad
           if [ $bad -eq 1 ]; then
-            echo "::error::${{ matrix.id }} risk exceeded: overall>$MAX_OVERALL or delta>$MAX_DELTA."
-            exit 1
+            if [ "$RISK_SOFT_FAIL" = "true" ]; then
+              echo "::warning::${{ matrix.id }} risk exceeded: overall>$MAX_OVERALL or delta>$MAX_DELTA. (SOFT FAIL - continuing)"
+            else
+              echo "::error::${{ matrix.id }} risk exceeded: overall>$MAX_OVERALL or delta>$MAX_DELTA."
+              exit 1
+            fi
           fi
+        env:
+          RISK_SOFT_FAIL: ${{ vars.RISK_SOFT_FAIL || 'false' }}
 
       - name: Smoke Tests (Individual)
         run: |
@@ -204,8 +210,21 @@ jobs:
           PORTFOLIO_MAX_DELTA: "5"
         run: |
           ts=$(ls -1 out-portfolio | tail -n1)
-          jq -e ".summary.overall <= ($PORTFOLIO_MAX_OVERALL|tonumber)" out-portfolio/$ts/portfolio.json
-          jq -e "(.summary.delta_overall|abs) <= ($PORTFOLIO_MAX_DELTA|tonumber)" out-portfolio/$ts/portfolio.json
+          overall=$(jq -r '.summary.overall' out-portfolio/$ts/portfolio.json)
+          delta=$(jq -r '.summary.delta_overall|abs' out-portfolio/$ts/portfolio.json)
+          
+          echo "Portfolio: overall=$overall delta=$delta"
+          
+          if (( $(echo "$overall > $PORTFOLIO_MAX_OVERALL" | bc -l) )) || (( $(echo "$delta > $PORTFOLIO_MAX_DELTA" | bc -l) )); then
+            if [ "$RISK_SOFT_FAIL" = "true" ]; then
+              echo "::warning::Portfolio risk exceeded: overall>$PORTFOLIO_MAX_OVERALL or delta>$PORTFOLIO_MAX_DELTA. (SOFT FAIL - continuing)"
+            else
+              echo "::error::Portfolio risk exceeded: overall>$PORTFOLIO_MAX_OVERALL or delta>$PORTFOLIO_MAX_DELTA."
+              exit 1
+            fi
+          fi
+        env:
+          RISK_SOFT_FAIL: ${{ vars.RISK_SOFT_FAIL || 'false' }}
       
       - name: Smoke Tests (Portfolio)
         run: |
