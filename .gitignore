@@ -49,7 +49,6 @@ secrets/
 out/
 out-*/
 out-portfolio/
-baseline/
 work/
 sources/
 temp/
@@ -59,12 +58,17 @@ tmp/
 *.pdf
 *.html
 *.csv
+
+# JSON: ignore most, but keep schemas/configs/baselines
 *.json
 !package.json
 !pyproject.toml
 !requirements.txt
-!*.schema.json
-!*.config.json
+!**/*.schema.json
+!**/*.config.json
+!baseline/*.risk.json
+!baseline/portfolio.*
+!baseline/*.history.json
 
 # Generated badges and visualizations
 *.svg
