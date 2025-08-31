@@ -1,0 +1,61 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2025-08-31T00:00:00Z",
+  "summary": {
+    "overall": 0.0,
+    "grade": "Info",
+    "delta_overall": 0.0,
+    "top_functions": [
+      {
+        "contract": "Counter",
+        "function": "increment",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "contract": "Counter",
+        "function": "decrement",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "contract": "Counter",
+        "function": "get",
+        "score": 0.0,
+        "grade": "Info"
+      }
+    ]
+  },
+  "by_function": {
+    "Counter.increment": {
+      "contract": "Counter",
+      "function": "increment",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    },
+    "Counter.decrement": {
+      "contract": "Counter",
+      "function": "decrement",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    },
+    "Counter.get": {
+      "contract": "Counter",
+      "function": "get",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    }
+  }
+}

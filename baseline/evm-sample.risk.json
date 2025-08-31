@@ -1,0 +1,77 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2025-08-31T00:00:00Z",
+  "summary": {
+    "overall": 0.0,
+    "grade": "Info",
+    "delta_overall": 0.0,
+    "top_functions": [
+      {
+        "contract": "Sample",
+        "function": "getCount",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "contract": "Sample",
+        "function": "getUserCount",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "contract": "Sample",
+        "function": "ping",
+        "score": 0.0,
+        "grade": "Info"
+      },
+      {
+        "contract": "Sample",
+        "function": "reset",
+        "score": 0.0,
+        "grade": "Info"
+      }
+    ]
+  },
+  "by_function": {
+    "Sample.getCount": {
+      "contract": "Sample",
+      "function": "getCount",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    },
+    "Sample.getUserCount": {
+      "contract": "Sample",
+      "function": "getUserCount",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    },
+    "Sample.ping": {
+      "contract": "Sample",
+      "function": "ping",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    },
+    "Sample.reset": {
+      "contract": "Sample",
+      "function": "reset",
+      "score": 0.0,
+      "grade": "Info",
+      "delta": 0.0,
+      "evidence": {
+        "stride_categories": []
+      }
+    }
+  }
+}
