@@ -1,34 +1,36 @@
 /* UatuAudit Dashboard Styles */
 
 :root {
-    /* Uatu Brand Colors */
-    --ink-navy: #0b1b2b;
-    --deep-slate: #17293c;
-    --gold-glow: #f7d046;
-    --border: #1f3b57;
+    /* Uatu Brand Colors - Exact Palette */
+    --ink: #0b1b2b;      /* Background */
+    --slate: #17293c;    /* Cards */
+    --edge: #1f3b57;     /* Borders */
+    --glow: #f7d046;     /* Accents */
+    
+    /* Status Colors - Professional */
+    --ready: #2e7d32;    /* Ready to Go */
+    --pass: #0288d1;     /* Passed Audit */
+    --warn: #fbc02d;     /* Needs Fixes */
+    --risk: #f57c00;     /* Dangerous */
+    --crit: #d32f2f;     /* Critical */
+    --muted: #6e7781;    /* Neutral/Aux */
+    --llm: #7b1fa2;      /* LLM Assisted */
+    
+    /* Text Colors */
     --text-primary: #e9eef3;
     --text-secondary: #a0aec0;
     
-    /* Status Colors */
-    --ready-to-go: #2e7d32;
-    --passed-audit: #0288d1;
-    --needs-fixes: #fbc02d;
-    --dangerous: #f57c00;
-    --critical: #d32f2f;
-    --neutral: #6e7781;
-    --llm-assisted: #7b1fa2;
-    
     /* Legacy support */
-    --primary-color: var(--ready-to-go);
-    --secondary-color: var(--passed-audit);
-    --accent-color: var(--gold-glow);
-    --danger-color: var(--critical);
-    --warning-color: var(--dangerous);
-    --success-color: var(--ready-to-go);
+    --primary-color: var(--ready);
+    --secondary-color: var(--pass);
+    --accent-color: var(--glow);
+    --danger-color: var(--crit);
+    --warning-color: var(--risk);
+    --success-color: var(--ready);
     --text-color: var(--text-primary);
-    --bg-color: var(--ink-navy);
-    --card-bg: var(--deep-slate);
-    --border-color: var(--border);
+    --bg-color: var(--ink);
+    --card-bg: var(--slate);
+    --border-color: var(--edge);
     --shadow: 0 8px 40px rgba(0,0,0,0.3);
 }
 
@@ -591,4 +593,104 @@ body {
     .runs-table td {
         padding: 0.5rem;
     }
+}
+
+/* Status Badge System */
+.badge {
+    display: inline-block;
+    border-radius: 10px;
+    padding: 4px 8px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    text-align: center;
+    min-width: 80px;
+}
+
+.badge.ready {
+    background: var(--ready);
+}
+
+.badge.pass {
+    background: var(--pass);
+}
+
+.badge.warn {
+    background: var(--warn);
+    color: #0b1b2b; /* Dark text for yellow background */
+}
+
+.badge.risk {
+    background: var(--risk);
+}
+
+.badge.crit {
+    background: var(--crit);
+}
+
+.badge.muted {
+    background: var(--muted);
+}
+
+.badge.llm {
+    background: var(--llm);
+}
+
+/* Badge sizes */
+.badge.large {
+    padding: 8px 16px;
+    font-size: 1rem;
+    min-width: 120px;
+}
+
+.badge.small {
+    padding: 2px 6px;
+    font-size: 0.625rem;
+    min-width: 60px;
+}
+
+/* Badge pills (secondary badges) */
+.badge-pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.badge-pill {
+    display: inline-block;
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    background: var(--muted);
+    color: white;
+    opacity: 0.8;
+}
+
+/* Uatu-specific styling */
+.uatu-glow {
+    box-shadow: 0 0 20px rgba(247, 208, 70, 0.3);
+}
+
+.uatu-focus {
+    border-color: var(--glow);
+    box-shadow: 0 0 0 3px rgba(247, 208, 70, 0.1);
+}
+
+.uatu-accent {
+    color: var(--glow);
+}
+
+.uatu-border {
+    border: 1px solid var(--edge);
+}
+
+.uatu-card {
+    background: var(--slate);
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
 }

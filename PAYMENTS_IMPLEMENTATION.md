@@ -14,6 +14,7 @@ This guide walks you through implementing the complete payment system for UatuAu
 
 ### **1. Deploy Smart Contract**
 
+
 ```bash
 # Make deployment script executable
 chmod +x scripts/deploy-contract.sh

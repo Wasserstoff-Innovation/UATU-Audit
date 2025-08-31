@@ -1,0 +1,52 @@
+{
+  "name": "uatu-audit-payments",
+  "version": "2.0.0",
+  "description": "UatuAudit On-Chain Payment System with Enhanced Security",
+  "main": "scripts/onchain-listener.ts",
+  "scripts": {
+    "listener": "ts-node scripts/onchain-listener.ts",
+    "listener:dev": "ts-node --watch scripts/onchain-listener.ts",
+    "test:contract": "forge test --match-contract AuditOrdersV2",
+    "build:contract": "forge build --contracts contracts/AuditOrdersV2.sol",
+    "deploy:testnet": "BASE_RPC_URL=https://sepolia.base.org ./scripts/deploy-v2-contract.sh",
+    "deploy:mainnet": "./scripts/deploy-v2-contract.sh",
+    "verify:contract": "forge verify-contract",
+    "lint": "eslint scripts/**/*.ts",
+    "format": "prettier --write scripts/**/*.ts"
+  },
+  "keywords": [
+    "uatu",
+    "audit",
+    "payments",
+    "base",
+    "usdc",
+    "smart-contracts",
+    "ethereum"
+  ],
+  "author": "UatuAudit Team",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.13.2",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/uatu-audit.git"
+  },
+  "homepage": "https://uatu-audit.com",
+  "bugs": {
+    "url": "https://github.com/your-org/uatu-audit/issues"
+  }
+}
