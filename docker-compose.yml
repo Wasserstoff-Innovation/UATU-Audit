@@ -4,17 +4,28 @@ services:
   dashboard:
     image: contract-auditor:prod
     entrypoint: []
-    command: ["python", "-m", "uvicorn", "auditor.dashboard.server:app", "--host", "0.0.0.0", "--port", "8080"]
+    command: ["python", "-m", "uvicorn", "auditor.dashboard.server:app", "--host", "0.0.0.0", "--port", "${DASHBOARD_PORT:-8080}"]
     ports:
-      - "8080:8080"
+      - "${DASHBOARD_PORT:-8080}:${DASHBOARD_PORT:-8080}"
     environment:
-      SECRET_KEY: "change-me-in-production"
+      SECRET_KEY: "${SECRET_KEY:-change-me-in-production}"
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-change-me-in-production}"
       GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      GITHUB_REDIRECT_URI: "${GITHUB_REDIRECT_URI:-http://localhost:8080/auth/github}"
       OAUTH_CALLBACK_URL: "${OAUTH_CALLBACK_URL:-http://localhost:8080/auth/callback}"
       ALLOWED_GH_ORGS: "${ALLOWED_GH_ORGS:-}"
       ALLOWED_EMAILS: "${ALLOWED_EMAILS:-}"
       DASHBOARD_CACHE_TTL: "${DASHBOARD_CACHE_TTL:-10}"
+      API_BASE_URL: "${API_BASE_URL:-http://localhost:8000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:8080}"
+      DATABASE_URL: "${DATABASE_URL:-sqlite:///./uatu_audit.db}"
+      DEBUG: "${DEBUG:-false}"
+      ENVIRONMENT: "${ENVIRONMENT:-production}"
+      DEFAULT_AUDIT_PRICE_USDC: "${DEFAULT_AUDIT_PRICE_USDC:-200}"
+      MAX_AUDIT_TIME_SECONDS: "${MAX_AUDIT_TIME_SECONDS:-30}"
+      PAYMENT_PROVIDER: "${PAYMENT_PROVIDER:-base}"
+      USDC_CONTRACT_ADDRESS: "${USDC_CONTRACT_ADDRESS:-0xa0b86a33e6ba83a6508b88d6c8a4e4ddb4cc6c44}"
       AUDITS_ROOT: "audits"
       EXTRA_ROOTS: "out"
     volumes:

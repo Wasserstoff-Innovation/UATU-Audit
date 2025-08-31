@@ -33,7 +33,16 @@ async def landing_page(request: Request):
     """Landing page with Uatu branding and wallet integration."""
     return templates.TemplateResponse("landing.html", {
         "request": request,
-        "year": datetime.now().year
+        "year": datetime.now().year,
+        # Environment variables for frontend configuration
+        "api_base_url": os.getenv("API_BASE_URL", "http://localhost:8000"),
+        "github_client_id": os.getenv("GITHUB_CLIENT_ID", ""),
+        "github_redirect_uri": os.getenv("GITHUB_REDIRECT_URI", "http://localhost:8080/auth/github"),
+        "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:8080"),
+        "audit_price_usdc": int(os.getenv("DEFAULT_AUDIT_PRICE_USDC", "200")),
+        "max_audit_time": int(os.getenv("MAX_AUDIT_TIME_SECONDS", "30")),
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "debug": os.getenv("DEBUG", "false").lower() == "true"
     })
 
 async def login_page(request: Request):
