@@ -19,7 +19,7 @@ from .llm.engine import detect_provider, LLMMeta
 from .risk.scoring import score as risk_score
 
 class Orchestrator:
-    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto", llm_provider: str = "auto", llm_model: str = "", risk: bool = True, risk_config_path: str | None = None, risk_baseline: str | None = None, risk_export: str = "csv", badge: bool = True, trend: bool = True, trend_n: int = 10):
+    def __init__(self, input_path_or_address: str, kind: str = "evm", out_root: Path = Path("out"), llm: bool = False, static_mode: str = "auto", eop_mode: str = "auto", llm_provider: str = "auto", llm_model: str = "", risk: bool = True, risk_config_path: str | None = None, risk_baseline: str | None = None, risk_export: str = "csv", badge: bool = True, trend: bool = True, trend_n: int = 10, pdf: bool = True):
         self.input = input_path_or_address
         self.kind = kind
         self.out_root = out_root
@@ -35,6 +35,7 @@ class Orchestrator:
         self.badge = badge
         self.trend = trend
         self.trend_n = trend_n
+        self.pdf = pdf
 
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         self.outdir = out_root / ts
@@ -302,4 +303,19 @@ class Orchestrator:
                 except Exception as e:
                     print(f"[warn] trend generation failed: {e}")
         self._report()
+        
+        # Generate PDF report if enabled
+        if self.pdf:
+            try:
+                from .report.pdf import render_pdf
+                html_path = self.outdir / "report.html"
+                if html_path.exists():
+                    pdf_path = html_path.with_suffix('.pdf')
+                    if render_pdf(str(html_path), str(pdf_path), str(self.outdir)):
+                        print(f"PDF report generated: {pdf_path}")
+                    else:
+                        print(f"[warn] PDF generation failed")
+            except Exception as e:
+                print(f"[warn] PDF generation failed: {e}")
+        
         return self.outdir

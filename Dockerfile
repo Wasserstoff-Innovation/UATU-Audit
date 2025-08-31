@@ -1,7 +1,9 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl jq graphviz ca-certificates docker.io build-essential pkg-config libssl-dev && \
+    git curl jq graphviz ca-certificates docker.io build-essential pkg-config libssl-dev \
+    libpango-1.0-0 libpangoft2-1.0-0 libffi8 libgdk-pixbuf-xlib-2.0-0 libxml2 libxslt1.1 \
+    fonts-noto fonts-noto-cjk && \
     rm -rf /var/lib/apt/lists/*
 
 # Foundry

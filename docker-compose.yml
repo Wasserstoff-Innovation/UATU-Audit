@@ -1,9 +1,25 @@
-version: "3.8"
+version: '3.8'
+
 services:
-  auditor:
-    build: .
-    image: contract-auditor
-    working_dir: /work
+  dashboard:
+    image: contract-auditor:prod
+    command: uvicorn auditor.dashboard.server:app --host 0.0.0.0 --port 8080
+    ports:
+      - "8080:8080"
+    environment:
+      SECRET_KEY: "change-me-in-production"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      OAUTH_CALLBACK_URL: "${OAUTH_CALLBACK_URL:-http://localhost:8080/auth/callback}"
+      ALLOWED_GH_ORGS: "${ALLOWED_GH_ORGS:-}"
+      ALLOWED_EMAILS: "${ALLOWED_EMAILS:-}"
+      DASHBOARD_CACHE_TTL: "${DASHBOARD_CACHE_TTL:-10}"
     volumes:
-      - ./:/work
-    entrypoint: ["auditor"]
+      - ./:/work:ro  # read-only bind in production
+    working_dir: /work
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

@@ -13,12 +13,17 @@ dependencies = [
   "typer[all]>=0.12.0",
   "pydantic>=2.6.0",
   "jinja2>=3.1.0",
-  "jsonschema>=4.21.0",
+  "jsonschema>=4.6.0",
   "rich>=13.7.0",
   "requests>=2.31.0",
   "openai",
   "anthropic",
-  "tenacity"
+  "tenacity",
+  "fastapi>=0.104.0",
+  "uvicorn[standard]>=0.24.0",
+  "authlib>=1.2.0",
+  "python-multipart>=0.0.6",
+  "weasyprint>=61.0"
 ]
 
 [project.scripts]

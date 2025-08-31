@@ -24,7 +24,8 @@ def audit(
     risk_export: str = typer.Option("csv", "--risk-export", help="csv | none (export format)"),
     badge: str = typer.Option("on", "--badge", help="on | off (generate risk badge SVG)"),
     trend: str = typer.Option("on", "--trend", help="on | off (generate risk trend sparklines)"),
-    trend_n: int = typer.Option(10, "--trend-n", help="number of history points to keep (default: 10)")
+    trend_n: int = typer.Option(10, "--trend-n", help="number of history points to keep (default: 10)"),
+    pdf: str = typer.Option("on", "--pdf", help="on | off (generate PDF report)")
 ):
     """
     Task 2:
