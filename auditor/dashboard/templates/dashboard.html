@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - UatuAudit</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Color palette */
+            --ink-900: #0B1B2B;
+            --slate-800: #102132;
+            --grid-line: rgba(84, 130, 158, .4);
+            --halo-gold: #F7D046;
+            --mint-400: #4CE3B8;
+            --ice-100: #F2F7FB;
+            --ice-200: #D5E4F0;
+            --ice-300: #9CB4C6;
+            
+            /* Typography */
+            --font-display: 'Inter', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+        
+        /* Reset */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: var(--font-body);
+            color: var(--ice-200);
+            background: var(--ink-900);
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Grid container - 12x8 grid */
+        .grid-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 2px;
+        }
+        
+        /* Base grid cell */
+        .grid-cell {
+            background: rgba(16, 33, 50, 0.2);
+            border: 1px solid var(--grid-line);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        /* Interactive hover effects */
+        .grid-cell.interactive:hover {
+            border-color: var(--halo-gold);
+            border-width: 3px;
+            color: var(--halo-gold);
+            font-weight: 600;
+            transform: scale(1.01);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(247, 208, 70, .3);
+        }
+        
+        /* Header styles */
+        .header-row {
+            background: rgba(16, 33, 50, 0.1);
+            border: 2px solid var(--grid-line);
+        }
+        
+        /* Logo cell */
+        .logo-cell {
+            grid-column: 1/4;
+            grid-row: 1/2;
+            background: transparent;
+            border: 2px solid var(--grid-line);
+            justify-content: flex-start;
+            padding: 12px 20px;
+        }
+        
+        .logo-cell img {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .logo-text {
+            color: var(--halo-gold);
+            font-size: 18px;
+            font-weight: 700;
+            margin-left: 12px;
+        }
+        
+        /* Navigation */
+        .nav-cell {
+            background: rgba(16, 33, 50, 0.15);
+            border: 2px solid var(--grid-line);
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--ice-300);
+        }
+        
+        .nav-cell.active {
+            background: rgba(247, 208, 70, 0.15);
+            color: var(--halo-gold);
+            border-color: var(--halo-gold);
+        }
+        
+        .nav-cell:hover {
+            background: var(--halo-gold);
+            color: var(--ink-900);
+        }
+        
+        /* Wallet area */
+        .wallet-area {
+            grid-column: 9/13;
+            grid-row: 1/2;
+            background: rgba(16, 33, 50, 0.2);
+            border: 2px solid var(--grid-line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .wallet-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .wallet-address {
+            color: var(--halo-gold);
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .wallet-network {
+            color: var(--ice-300);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+        
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 100, 100, 0.3);
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--ice-300);
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+            border-color: #ff6464;
+        }
+        
+        /* Main content area */
+        .content-area {
+            grid-column: 1/13;
+            grid-row: 2/8;
+            background: rgba(16, 33, 50, 0.1);
+            border: 2px solid var(--grid-line);
+            padding: 32px;
+            overflow-y: auto;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+        
+        /* Audit cards */
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            width: 100%;
+        }
+        
+        .audit-card {
+            background: rgba(16, 33, 50, 0.4);
+            border: 2px solid var(--grid-line);
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.2s ease;
+        }
+        
+        .audit-card:hover {
+            border-color: var(--halo-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(247, 208, 70, 0.1);
+        }
+        
+        .audit-title {
+            color: var(--ice-100);
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .audit-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: var(--ice-300);
+        }
+        
+        .security-score {
+            color: var(--halo-gold);
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 24px;
+        }
+        
+        .audit-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: var(--halo-gold);
+            color: var(--ink-900);
+        }
+        
+        .btn-primary:hover {
+            background: var(--ink-900);
+            color: var(--halo-gold);
+            box-shadow: 0 0 12px rgba(247, 208, 70, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--ice-300);
+            border: 1px solid var(--grid-line);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--ice-300);
+            color: var(--ink-900);
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            color: var(--ice-300);
+        }
+        
+        .empty-state h3 {
+            color: var(--ice-100);
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 32px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .start-audit-btn {
+            background: var(--halo-gold);
+            color: var(--ink-900);
+            padding: 16px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .start-audit-btn:hover {
+            background: var(--ink-900);
+            color: var(--halo-gold);
+            box-shadow: 0 0 16px rgba(247, 208, 70, 0.4);
+        }
+        
+        /* Status badges */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-completed {
+            background: rgba(76, 227, 184, 0.2);
+            color: var(--mint-400);
+        }
+        
+        .status-running {
+            background: rgba(247, 208, 70, 0.2);
+            color: var(--halo-gold);
+        }
+        
+        .status-failed {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+        }
+        
+        .status-pending {
+            background: rgba(156, 180, 198, 0.2);
+            color: var(--ice-300);
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-container">
+        <!-- Header Row -->
+        <!-- Logo -->
+        <div class="grid-cell logo-cell">
+            <img src="/static/uatu-logo.svg" alt="UatuAudit">
+            <span class="logo-text">UatuAudit</span>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="grid-cell nav-cell active" style="grid-column:4/5; grid-row:1/2;">
+            Runs
+        </div>
+        <div class="grid-cell nav-cell" style="grid-column:5/6; grid-row:1/2;" onclick="navigateToPortfolio()">
+            Portfolio
+        </div>
+        <div class="grid-cell nav-cell" style="grid-column:6/7; grid-row:1/2;" onclick="navigateToHome()">
+            Home
+        </div>
+        
+        <!-- Header spacer -->
+        <div class="grid-cell header-row" style="grid-column:7/9; grid-row:1/2;"></div>
+        
+        <!-- Wallet Area -->
+        <div class="wallet-area">
+            <div class="wallet-info">
+                <div>
+                    <div class="wallet-address" id="walletAddress">Loading...</div>
+                    <div class="wallet-network">BASE NETWORK</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Disconnect</button>
+        </div>
+        
+        <!-- Main Content Area -->
+        <div class="content-area">
+            <div id="contentContainer">
+                <!-- Content will be loaded here -->
+                <div class="empty-state">
+                    <h3>Welcome to UatuAudit</h3>
+                    <p>Start your first security audit to see your audit history here.</p>
+                    <button class="start-audit-btn" onclick="startNewAudit()">Start New Audit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let sessionData = null;
+        let currentUser = null;
+        
+        // Check authentication on page load
+        async function checkAuthentication() {
+            const storedSession = localStorage.getItem('uatu_session');
+            if (!storedSession) {
+                window.location.href = '/';
+                return;
+            }
+            
+            try {
+                sessionData = JSON.parse(storedSession);
+                const expiresAt = new Date(sessionData.expires_at);
+                
+                if (expiresAt <= new Date()) {
+                    localStorage.removeItem('uatu_session');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                currentUser = sessionData.user;
+                updateWalletDisplay();
+                loadAuditHistory();
+                
+            } catch (e) {
+                console.error('Invalid session:', e);
+                localStorage.removeItem('uatu_session');
+                window.location.href = '/';
+            }
+        }
+        
+        // Update wallet display
+        function updateWalletDisplay() {
+            if (currentUser && currentUser.wallet_address) {
+                const address = currentUser.wallet_address;
+                document.getElementById('walletAddress').textContent = 
+                    address.slice(0, 6) + '...' + address.slice(-4);
+            }
+        }
+        
+        // Load audit history
+        async function loadAuditHistory() {
+            try {
+                const response = await fetch('/api/audits/history', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionData.session_id}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const audits = await response.json();
+                    displayAudits(audits);
+                } else {
+                    console.error('Failed to load audit history');
+                }
+            } catch (e) {
+                console.error('Error loading audits:', e);
+            }
+        }
+        
+        // Display audits
+        function displayAudits(audits) {
+            const container = document.getElementById('contentContainer');
+            
+            if (!audits || audits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Audits Yet</h3>
+                        <p>Start your first security audit to see your audit history here.</p>
+                        <button class="start-audit-btn" onclick="startNewAudit()">Start New Audit</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const auditGrid = document.createElement('div');
+            auditGrid.className = 'audit-grid';
+            
+            audits.forEach(audit => {
+                const card = createAuditCard(audit);
+                auditGrid.appendChild(card);
+            });
+            
+            container.innerHTML = '';
+            container.appendChild(auditGrid);
+        }
+        
+        // Create audit card
+        function createAuditCard(audit) {
+            const card = document.createElement('div');
+            card.className = 'audit-card';
+            
+            const statusClass = `status-${audit.status}`;
+            const score = audit.security_score || 0;
+            const timestamp = new Date(audit.created_at).toLocaleDateString();
+            
+            card.innerHTML = `
+                <div class="audit-title">${audit.repo_name || 'Sample'}</div>
+                <div class="audit-meta">
+                    <span>Type: ${audit.branch || 'unknown'}</span>
+                    <span class="status-badge ${statusClass}">${audit.status}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
+                    <div>
+                        <div style="font-size: 12px; color: var(--ice-300);">Security Score:</div>
+                        <div class="security-score">${score}/100</div>
+                    </div>
+                    <div style="text-align: right; font-size: 12px; color: var(--ice-300);">
+                        <div>Timestamp:</div>
+                        <div>${timestamp}</div>
+                    </div>
+                </div>
+                <div class="audit-actions">
+                    <a href="/run/${audit.id}" class="btn btn-primary">View Details</a>
+                    ${audit.pdf_path ? `<a href="/download/pdf/${audit.id}" class="btn btn-secondary">Download PDF</a>` : ''}
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // Navigation functions
+        function navigateToPortfolio() {
+            window.location.href = '/portfolio';
+        }
+        
+        function navigateToHome() {
+            window.location.href = '/';
+        }
+        
+        function startNewAudit() {
+            window.location.href = '/';
+        }
+        
+        // Logout function
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${sessionData.session_id}`
+                    }
+                });
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+            
+            localStorage.removeItem('uatu_session');
+            window.location.href = '/';
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', checkAuthentication);
+    </script>
+</body>
+</html>

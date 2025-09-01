@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UatuAudit - Select Repository</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Uatu Brand Colors */
+            --ink-900: #0B1B2B;
+            --slate-800: #102132;
+            --slate-700: #1a2b3e;
+            --grid-line: rgba(84, 130, 158, .4);
+            --halo-gold: #F7D046;
+            --mint-400: #4CE3B8;
+            --ice-100: #F2F7FB;
+            --ice-200: #D5E4F0;
+            --ice-300: #9CB4C6;
+            
+            /* Typography */
+            --font-display: 'Inter', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            color: var(--ice-200);
+            background: var(--ink-900);
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Grid container - 12x8 grid matching landing */
+        .grid-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 2px;
+        }
+        
+        /* Base grid cell */
+        .grid-cell {
+            background: rgba(16, 33, 50, 0.2);
+            border: 1px solid var(--grid-line);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        /* Logo/Back button cell - top left corner */
+        .logo-cell {
+            grid-column: 1/3;
+            grid-row: 1/2;
+            background: transparent;
+            border: 2px solid var(--grid-line);
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .logo-cell.interactive:hover {
+            background: var(--halo-gold);
+            border-color: var(--halo-gold);
+            border-width: 3px;
+            z-index: 10;
+        }
+        
+        .logo-img {
+            height: 36px;
+            width: auto;
+        }
+        
+        /* User wallet cell - top right */
+        .wallet-cell {
+            grid-column: 10/13;
+            grid-row: 1/2;
+            background: transparent;
+            border: 2px solid var(--grid-line);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 16px;
+        }
+        
+        .wallet-info-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        
+        .wallet-address-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .wallet-icon {
+            width: 8px;
+            height: 8px;
+            background: var(--mint-400);
+            border-radius: 50%;
+        }
+        
+        .wallet-address {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--mint-400);
+            letter-spacing: 0.5px;
+        }
+        
+        .network-badge {
+            font-size: 10px;
+            color: var(--ice-300);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+        
+        .disconnect-btn {
+            background: transparent;
+            border: 1px solid #EF4444;
+            color: #EF4444;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .disconnect-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            transform: scale(1.02);
+        }
+        
+        /* Main modal container */
+        .modal-container {
+            grid-column: 3/11;
+            grid-row: 3/7;
+            background: rgba(26, 43, 62, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--grid-line);
+            border-radius: 16px;
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--ice-100);
+            margin-bottom: 16px;
+            font-family: var(--font-display);
+        }
+        
+        .modal-description {
+            font-size: 16px;
+            color: var(--ice-300);
+            max-width: 500px;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        
+        /* Repository selector */
+        .repo-selector {
+            width: 100%;
+            max-width: 450px;
+            margin-bottom: 40px;
+        }
+        
+        .repo-dropdown {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--slate-800);
+            color: var(--ice-200);
+            border: 2px solid var(--grid-line);
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .repo-dropdown:hover {
+            border-color: var(--mint-400);
+            background: rgba(76, 227, 184, 0.05);
+        }
+        
+        .repo-dropdown:focus {
+            border-color: var(--mint-400);
+            box-shadow: 0 0 0 3px rgba(76, 227, 184, 0.1);
+        }
+        
+        .repo-dropdown option {
+            background: var(--slate-800);
+            color: var(--ice-200);
+            padding: 8px;
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-family: var(--font-body);
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--ice-300);
+            border: 2px solid rgba(156, 180, 198, 0.3);
+        }
+        
+        .btn-ghost:hover {
+            border-color: var(--ice-300);
+            color: var(--ice-100);
+            background: rgba(156, 180, 198, 0.1);
+        }
+        
+        .btn-primary {
+            background: var(--mint-400);
+            color: var(--ink-900);
+            border: 2px solid var(--mint-400);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #3fd4aa;
+            border-color: #3fd4aa;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(76, 227, 184, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .btn-icon {
+            font-size: 18px;
+        }
+        
+        /* Background grid cells */
+        .bg-cell {
+            background: rgba(16, 33, 50, 0.15);
+            border: 1px solid var(--grid-line);
+        }
+        
+        /* Empty header cells */
+        .header-empty {
+            grid-row: 1/2;
+            background: transparent;
+            border: 1px solid var(--grid-line);
+        }
+        
+        /* GitHub Connect State */
+        .github-connect-container {
+            grid-column: 3/11;
+            grid-row: 3/6;
+            background: rgba(26, 43, 62, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--grid-line);
+            border-radius: 16px;
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .github-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--ice-100);
+            margin-bottom: 32px;
+            font-family: var(--font-display);
+        }
+        
+        .github-btn {
+            background: var(--halo-gold);
+            color: var(--ink-900);
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        
+        .github-btn:hover {
+            background: #f5c830;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(247, 208, 70, 0.4);
+        }
+        
+        .github-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .skip-link {
+            margin-top: 20px;
+            color: var(--ice-300);
+            font-size: 14px;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .skip-link:hover {
+            color: var(--ice-100);
+        }
+        
+        /* Loading state */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--mint-400);
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Back button styling */
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--ice-300);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 16px;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .logo-cell:hover .back-btn {
+            color: var(--ink-900);
+            font-size: 16px;
+            font-weight: 700;
+            transform: scale(1.05);
+        }
+        
+        .back-arrow {
+            font-size: 18px;
+            transition: font-size 0.3s ease;
+        }
+        
+        .logo-cell:hover .back-arrow {
+            font-size: 20px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-container">
+        <!-- Header Row -->
+        <div class="grid-cell logo-cell" id="headerLeft">
+            <img src="/static/uatu-logo.svg" alt="Uatu" class="logo-img" id="logoImg">
+            <a href="#" class="back-btn hidden" id="backBtn" onclick="showGitHubConnect(); return false;">
+                <span class="back-arrow">←</span>
+                <span>Back</span>
+            </a>
+        </div>
+        
+        <!-- Empty header cells -->
+        <div class="grid-cell header-empty" style="grid-column: 3/4;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 4/5;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 5/6;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 6/7;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 7/8;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 8/9;"></div>
+        <div class="grid-cell header-empty" style="grid-column: 9/10;"></div>
+        
+        <!-- Wallet info (only shown when authenticated) -->
+        <div class="grid-cell wallet-cell" id="walletInfo" style="display: none;">
+            <div class="wallet-info-group">
+                <div class="wallet-address-row">
+                    <div class="wallet-icon"></div>
+                    <span class="wallet-address" id="walletAddress">0x66c9...648c</span>
+                </div>
+                <span class="network-badge">BASE NETWORK</span>
+            </div>
+            <button class="disconnect-btn" onclick="disconnect()" title="Exit">
+                Exit
+            </button>
+        </div>
+        
+        
+        <!-- GitHub Connect State -->
+        <div class="github-connect-container" id="githubConnect">
+            <h1 class="github-title">Connect GitHub</h1>
+            <a href="/auth/github" class="github-btn">
+                <svg class="github-icon" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                Connect GitHub Account
+            </a>
+            <a href="/dashboard" class="skip-link">Skip to Dashboard →</a>
+        </div>
+        
+        <!-- Repository Selection State (hidden by default) -->
+        <div class="modal-container hidden" id="repoSelect">
+            <h1 class="modal-title">Select Repository for Audit</h1>
+            <p class="modal-description">
+                Choose the smart contract repository you'd like to audit. We'll analyze 
+                the code for security vulnerabilities using advanced STRIDE methodology.
+            </p>
+            
+            <div class="repo-selector">
+                <select class="repo-dropdown" id="repoDropdown">
+                    <option value="">Select a repository...</option>
+                </select>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="/dashboard" class="btn btn-ghost">
+                    → Skip to Dashboard
+                </a>
+                <button class="btn btn-primary" id="continueBtn" disabled>
+                    🚀 Continue with Selected Repo
+                </button>
+            </div>
+        </div>
+        
+        <!-- Background grid cells -->
+        <!-- Row 2 -->
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 3/4; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 4/5; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 5/6; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 6/7; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 7/8; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 8/9; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 9/10; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 10/11; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 2/3;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 2/3;"></div>
+        
+        <!-- Side columns -->
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 3/4;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 3/4;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 3/4;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 3/4;"></div>
+        
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 4/5;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 4/5;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 4/5;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 4/5;"></div>
+        
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 5/6;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 5/6;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 5/6;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 5/6;"></div>
+        
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 6/7;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 6/7;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 6/7;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 6/7;"></div>
+        
+        <!-- Bottom rows -->
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 3/4; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 4/5; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 5/6; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 6/7; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 7/8; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 8/9; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 9/10; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 10/11; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 7/8;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 7/8;"></div>
+        
+        <div class="grid-cell bg-cell" style="grid-column: 1/2; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 2/3; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 3/4; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 4/5; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 5/6; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 6/7; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 7/8; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 8/9; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 9/10; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 10/11; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 11/12; grid-row: 8/9;"></div>
+        <div class="grid-cell bg-cell" style="grid-column: 12/13; grid-row: 8/9;"></div>
+    </div>
+    
+    <script>
+        let selectedRepo = null;
+        let isAuthenticated = false;
+        let hasGitHub = false;
+        
+        // Check authentication status
+        async function checkAuth() {
+            // Since user reached this page, they should be authenticated
+            // The backend redirects to landing if not authenticated
+            
+            // Show wallet info (assume authenticated)
+            document.getElementById('walletInfo').style.display = 'flex';
+            
+            // Check if user has GitHub connected by trying to load repos
+            try {
+                const response = await fetch('/api/github/repos');
+                if (response.ok) {
+                    // GitHub is connected, show repo selection
+                    const repos = await response.json();
+                    showRepoSelection();
+                    populateDropdown(repos);
+                } else {
+                    // GitHub not connected, show connect screen
+                    showGitHubConnect();
+                }
+            } catch (error) {
+                console.error('Error checking GitHub status:', error);
+                // Default to showing GitHub connect
+                showGitHubConnect();
+            }
+        }
+        
+        function showGitHubConnect() {
+            document.getElementById('githubConnect').classList.remove('hidden');
+            document.getElementById('repoSelect').classList.add('hidden');
+            document.getElementById('backBtn').classList.add('hidden');
+            document.getElementById('logoImg').classList.remove('hidden');
+            document.getElementById('headerLeft').classList.remove('interactive');
+        }
+        
+        function showRepoSelection() {
+            document.getElementById('githubConnect').classList.add('hidden');
+            document.getElementById('repoSelect').classList.remove('hidden');
+            document.getElementById('backBtn').classList.remove('hidden');
+            document.getElementById('logoImg').classList.add('hidden');
+            document.getElementById('headerLeft').classList.add('interactive');
+        }
+        
+        function populateDropdown(repos) {
+            const dropdown = document.getElementById('repoDropdown');
+            dropdown.innerHTML = '<option value="">Select a repository...</option>';
+            
+            repos.forEach(repo => {
+                const option = document.createElement('option');
+                option.value = repo.name;
+                option.textContent = repo.name;
+                option.dataset.repo = JSON.stringify(repo);
+                dropdown.appendChild(option);
+            });
+        }
+        
+        // Handle repo selection
+        document.getElementById('repoDropdown').addEventListener('change', (e) => {
+            const selected = e.target.selectedOptions[0];
+            if (selected && selected.value) {
+                selectedRepo = JSON.parse(selected.dataset.repo);
+                document.getElementById('continueBtn').disabled = false;
+            } else {
+                selectedRepo = null;
+                document.getElementById('continueBtn').disabled = true;
+            }
+        });
+        
+        // Handle continue button
+        document.getElementById('continueBtn').addEventListener('click', () => {
+            if (selectedRepo) {
+                localStorage.setItem('selectedRepo', JSON.stringify(selectedRepo));
+                window.location.href = `/setup-project?repo=${selectedRepo.name}`;
+            }
+        });
+        
+        // Disconnect wallet
+        function disconnect() {
+            if (confirm('Disconnect wallet?')) {
+                window.location.href = '/logout';
+            }
+        }
+        
+        // Initialize on load
+        checkAuth();
+    </script>
+</body>
+</html>

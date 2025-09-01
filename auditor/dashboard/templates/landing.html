@@ -485,6 +485,56 @@
     // Wallet connection with Base blockchain
     let walletConnected = false;
     let userAddress = null;
+    let sessionData = null;
+    
+    // Check for existing session on page load
+    function checkExistingSession() {
+      const storedSession = localStorage.getItem('uatu_session');
+      if (storedSession) {
+        try {
+          sessionData = JSON.parse(storedSession);
+          const expiresAt = new Date(sessionData.expires_at);
+          
+          if (expiresAt > new Date()) {
+            // Session is still valid
+            walletConnected = true;
+            userAddress = sessionData.wallet_address;
+            
+            // Update connect wallet button
+            const connectBtn = document.getElementById('connectWallet');
+            if (connectBtn) {
+              connectBtn.textContent = userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+              connectBtn.onclick = () => showOnboardingScreen();
+            }
+            
+            return true;
+          } else {
+            // Session expired
+            localStorage.removeItem('uatu_session');
+          }
+        } catch (e) {
+          console.error('Invalid session data:', e);
+          localStorage.removeItem('uatu_session');
+        }
+      }
+      return false;
+    }
+    
+    // Navigate to dashboard if already connected
+    function navigateToDashboard() {
+      if (sessionData) {
+        // Add session headers for authenticated requests
+        fetch('/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${sessionData.session_id}`
+          }
+        }).then(response => {
+          if (response.ok) {
+            window.location.href = '/dashboard';
+          }
+        }).catch(console.error);
+      }
+    }
     
     // Base blockchain configuration
     const BASE_CHAIN_ID = '0x2105'; // Base mainnet
@@ -500,7 +550,7 @@
       blockExplorerUrls: ['https://basescan.org']
     };
     
-    // Connect wallet function
+    // Connect wallet function with proper authentication
     async function connectWallet() {
       if (typeof window.ethereum !== 'undefined') {
         try {
@@ -533,6 +583,43 @@
           }
           
           userAddress = accounts[0];
+          
+          // Create authentication message
+          const message = `UatuAudit Login\nWallet: ${userAddress}\nTimestamp: ${Date.now()}`;
+          
+          // Sign message for authentication
+          const signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [message, userAddress]
+          });
+          
+          // Authenticate with backend
+          const authResponse = await fetch('/api/auth/wallet', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              wallet_address: userAddress,
+              message: message,
+              signature: signature
+            })
+          });
+          
+          if (!authResponse.ok) {
+            throw new Error('Authentication failed');
+          }
+          
+          const authData = await authResponse.json();
+          
+          // Store session data
+          localStorage.setItem('uatu_session', JSON.stringify({
+            session_id: authData.session_id,
+            wallet_address: userAddress,
+            user: authData.user,
+            expires_at: authData.expires_at
+          }));
+          
           walletConnected = true;
           
           // Update UI
@@ -587,6 +674,11 @@
           <div class="grid-cell onboarding-main" style="grid-column:3/11; grid-row:3/7;">
             <h2 style="color:var(--ice-100); font-size:28px; margin-bottom:32px; text-align:center;">Connect GitHub</h2>
             
+            <!-- Error message section -->
+            <div id="errorMessage" style="display: none; background: rgba(211, 47, 47, 0.1); border: 1px solid #d32f2f; color: #d32f2f; padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+                <p id="errorText"></p>
+            </div>
+            
             <div class="github-connect-section">
               <button id="connectGitHub" class="github-button">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-right:12px;">
@@ -594,6 +686,12 @@
                 </svg>
                 Connect GitHub Account
               </button>
+              
+              <div style="text-align: center; margin-top: 16px;">
+                <a href="/dashboard" class="skip-button" style="color: var(--ice-300); text-decoration: none; font-size: 14px; border-bottom: 1px solid var(--ice-300); padding-bottom: 2px;">
+                  Skip to Dashboard →
+                </a>
+              </div>
               
               <div id="repoSelection" class="repo-selection" style="display:none;">
                 <h3 style="color:var(--ice-100); margin:24px 0 16px;">Select Repository</h3>
@@ -831,7 +929,7 @@
     // Backend API configuration - loaded from environment
     const API_BASE_URL = '{{ api_base_url or "http://localhost:8000" }}';
     const GITHUB_CLIENT_ID = '{{ github_client_id or "" }}';
-    const GITHUB_REDIRECT_URI = '{{ github_redirect_uri or "http://localhost:8080/auth/github" }}';
+    const GITHUB_REDIRECT_URI = '{{ github_redirect_uri or "http://localhost:8080/auth/callback" }}';
     const FRONTEND_URL = '{{ frontend_url or "http://localhost:8080" }}';
     const AUDIT_PRICE_USDC = {{ audit_price_usdc or 200 }};
     const MAX_AUDIT_TIME = {{ max_audit_time or 30 }};
@@ -839,27 +937,11 @@
     // Setup GitHub connection
     function setupGitHubConnection() {
       document.getElementById('connectGitHub')?.addEventListener('click', async () => {
-        // Real GitHub OAuth flow
-        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${GITHUB_REDIRECT_URI}&scope=repo`;
+        // Real GitHub OAuth flow - redirect in same window
+        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${GITHUB_REDIRECT_URI}&scope=user:email read:org`;
         
-        // Open GitHub OAuth in popup
-        const popup = window.open(githubAuthUrl, 'github-auth', 'width=600,height=700');
-        
-        // Listen for OAuth callback
-        const checkAuth = setInterval(() => {
-          try {
-            if (popup.closed) {
-              clearInterval(checkAuth);
-              // Check if we have access token (you'd implement this based on your backend)
-              const token = localStorage.getItem('github_token');
-              if (token) {
-                loadGitHubRepos(token);
-              }
-            }
-          } catch (e) {
-            // Cross-origin error, continue checking
-          }
-        }, 1000);
+        // Redirect to GitHub OAuth in same window
+        window.location.href = githubAuthUrl;
       });
       
       // For demo/testing purposes - double-click for mock audit
@@ -916,6 +998,43 @@
         console.log('Social icon clicked');
       });
     });
+    
+    // Initialize session check on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkExistingSession();
+    });
+    
+    // Check session immediately if DOM is already loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', checkExistingSession);
+    } else {
+      checkExistingSession();
+    }
+    
+    // Handle OAuth error messages
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      const errorText = document.getElementById('errorText');
+      if (errorDiv && errorText) {
+        errorText.textContent = message;
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    // Check for error parameters in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      const errorMessages = {
+        'invalid_state': 'OAuth state mismatch. Please try connecting again.',
+        'no_code': 'No authorization code received from GitHub.',
+        'no_token': 'Failed to get access token from GitHub.',
+        'user_info_failed': 'Failed to get user information from GitHub.',
+        'access_denied': 'Access denied. You may not have permission to access this application.',
+        'oauth_failed': 'OAuth authentication failed. Please try again.'
+      };
+      showError(errorMessages[error] || 'An unknown error occurred during authentication.');
+    }
   </script>
 </body>
 </html>

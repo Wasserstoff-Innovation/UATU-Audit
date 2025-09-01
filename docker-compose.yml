@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   dashboard:
+    env_file:
+      - dashboard.env
     image: contract-auditor:prod
     entrypoint: []
     command: ["python", "-m", "uvicorn", "auditor.dashboard.server:app", "--host", "0.0.0.0", "--port", "${DASHBOARD_PORT:-8080}"]
@@ -12,7 +14,7 @@ services:
       JWT_SECRET_KEY: "${JWT_SECRET_KEY:-change-me-in-production}"
       GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
-      GITHUB_REDIRECT_URI: "${GITHUB_REDIRECT_URI:-http://localhost:8080/auth/github}"
+      GITHUB_REDIRECT_URI: "${GITHUB_REDIRECT_URI:-http://localhost:8080/auth/callback}"
       OAUTH_CALLBACK_URL: "${OAUTH_CALLBACK_URL:-http://localhost:8080/auth/callback}"
       ALLOWED_GH_ORGS: "${ALLOWED_GH_ORGS:-}"
       ALLOWED_EMAILS: "${ALLOWED_EMAILS:-}"
