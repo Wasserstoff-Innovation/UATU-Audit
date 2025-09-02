@@ -1,6 +1,28 @@
 version: '3.8'
 
 services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: uatu-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: uatu_audit
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - uatu-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   dashboard:
     env_file:
       - dashboard.env
@@ -22,6 +44,7 @@ services:
       API_BASE_URL: "${API_BASE_URL:-http://localhost:8000}"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:8080}"
       DATABASE_URL: "${DATABASE_URL:-sqlite:///./uatu_audit.db}"
+      MONGODB_URL: "${MONGODB_URL:-mongodb://admin:password@mongodb:27017/uatu_audit?authSource=admin}"
       DEBUG: "${DEBUG:-false}"
       ENVIRONMENT: "${ENVIRONMENT:-production}"
       DEFAULT_AUDIT_PRICE_USDC: "${DEFAULT_AUDIT_PRICE_USDC:-200}"
@@ -34,8 +57,42 @@ services:
       - ./:/work:ro  # read-only bind in production
     working_dir: /work
     restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - uatu-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${DASHBOARD_PORT:-8080}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Auditor CLI Service (for running audits)
+  auditor:
+    image: contract-auditor:prod
+    container_name: uatu-auditor
+    env_file:
+      - .env
+    environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      AUDITS_ROOT: "/app/audits"
+      EXTRA_ROOTS: "/app/out"
+    volumes:
+      - ./audits:/app/audits
+      - ./out:/app/out
+      - ./examples:/app/examples
+      - ./tmp:/app/tmp
+    networks:
+      - uatu-network
+    command: ["--help"]
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+
+networks:
+  uatu-network:
+    driver: bridge

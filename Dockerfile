@@ -18,11 +18,14 @@ RUN /root/.cargo/bin/cargo install --locked soroban-cli || true
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md requirements.txt ./
 COPY auditor ./auditor
 COPY examples ./examples
 
-RUN pip install --no-cache-dir hatchling && \
+# Install Python dependencies from requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir hatchling && \
     python -m pip install --no-cache-dir -e .
 
 ENTRYPOINT ["auditor"]

@@ -201,37 +201,103 @@
         .repo-selector {
             width: 100%;
             max-width: 450px;
-            margin-bottom: 40px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .selector-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ice-100);
+            margin-bottom: 8px;
+            text-align: left;
         }
         
         .repo-dropdown {
             width: 100%;
-            padding: 14px 16px;
+            padding: 16px 20px;
+            padding-right: 45px;
             background: var(--slate-800);
             color: var(--ice-200);
             border: 2px solid var(--grid-line);
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 15px;
             font-family: var(--font-body);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             outline: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234CE3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 16px;
         }
         
         .repo-dropdown:hover {
             border-color: var(--mint-400);
-            background: rgba(76, 227, 184, 0.05);
+            background-color: rgba(76, 227, 184, 0.08);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
         .repo-dropdown:focus {
             border-color: var(--mint-400);
-            box-shadow: 0 0 0 3px rgba(76, 227, 184, 0.1);
+            box-shadow: 0 0 0 4px rgba(76, 227, 184, 0.15);
+            background-color: rgba(76, 227, 184, 0.1);
         }
         
         .repo-dropdown option {
-            background: var(--slate-800);
+            background: var(--slate-700);
             color: var(--ice-200);
-            padding: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--grid-line);
+        }
+        
+        .repo-dropdown option:hover {
+            background: rgba(76, 227, 184, 0.1);
+            color: var(--mint-400);
+        }
+        
+        .repo-dropdown option:first-child {
+            color: var(--ice-300);
+            font-style: italic;
+        }
+        
+        /* Custom dropdown styling */
+        .dropdown-wrapper {
+            position: relative;
+        }
+        
+        .dropdown-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--mint-400);
+            font-size: 14px;
+        }
+        
+        /* Branch selector specific styling */
+        #branchSelector .selector-label {
+            color: var(--halo-gold);
+        }
+        
+        #branchSelector .repo-dropdown {
+            border-color: rgba(247, 208, 70, 0.4);
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F7D046' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+        }
+        
+        #branchSelector .repo-dropdown:hover {
+            border-color: var(--halo-gold);
+            background-color: rgba(247, 208, 70, 0.08);
+        }
+        
+        #branchSelector .repo-dropdown:focus {
+            border-color: var(--halo-gold);
+            box-shadow: 0 0 0 4px rgba(247, 208, 70, 0.15);
+            background-color: rgba(247, 208, 70, 0.1);
         }
         
         /* Action buttons */
@@ -476,8 +542,16 @@
             </p>
             
             <div class="repo-selector">
+                <label class="selector-label" for="repoDropdown">📁 Repository</label>
                 <select class="repo-dropdown" id="repoDropdown">
                     <option value="">Select a repository...</option>
+                </select>
+            </div>
+            
+            <div class="repo-selector" id="branchSelector" style="display: none;">
+                <label class="selector-label" for="branchDropdown">🌿 Branch</label>
+                <select class="repo-dropdown" id="branchDropdown">
+                    <option value="">Select a branch...</option>
                 </select>
             </div>
             
@@ -617,22 +691,81 @@
         }
         
         // Handle repo selection
-        document.getElementById('repoDropdown').addEventListener('change', (e) => {
+        document.getElementById('repoDropdown').addEventListener('change', async (e) => {
             const selected = e.target.selectedOptions[0];
             if (selected && selected.value) {
                 selectedRepo = JSON.parse(selected.dataset.repo);
-                document.getElementById('continueBtn').disabled = false;
+                
+                // Load branches for selected repo
+                await loadBranches(selectedRepo.name);
+                
+                // Show branch selector
+                document.getElementById('branchSelector').style.display = 'block';
+                
+                // Disable continue button until branch is selected
+                document.getElementById('continueBtn').disabled = true;
             } else {
                 selectedRepo = null;
+                document.getElementById('branchSelector').style.display = 'none';
                 document.getElementById('continueBtn').disabled = true;
             }
         });
         
+        // Handle branch selection
+        document.getElementById('branchDropdown').addEventListener('change', (e) => {
+            const selectedBranch = e.target.value;
+            if (selectedBranch && selectedRepo) {
+                selectedRepo.branch = selectedBranch;
+                document.getElementById('continueBtn').disabled = false;
+            } else {
+                document.getElementById('continueBtn').disabled = true;
+            }
+        });
+        
+        // Load branches for a repository
+        async function loadBranches(repoName) {
+            try {
+                const response = await fetch(`/api/github/branches?repo=${encodeURIComponent(repoName)}`);
+                if (response.ok) {
+                    const branches = await response.json();
+                    populateBranchDropdown(branches);
+                } else {
+                    console.error('Failed to load branches:', await response.text());
+                    // Fallback: add main/master branches
+                    populateBranchDropdown([{name: 'main'}, {name: 'master'}]);
+                }
+            } catch (error) {
+                console.error('Error loading branches:', error);
+                // Fallback: add main/master branches
+                populateBranchDropdown([{name: 'main'}, {name: 'master'}]);
+            }
+        }
+        
+        function populateBranchDropdown(branches) {
+            const dropdown = document.getElementById('branchDropdown');
+            dropdown.innerHTML = '<option value="">Select a branch...</option>';
+            
+            branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.name;
+                option.textContent = branch.name;
+                dropdown.appendChild(option);
+            });
+            
+            // Auto-select 'main' if it exists
+            const mainBranch = branches.find(b => b.name === 'main');
+            if (mainBranch) {
+                dropdown.value = 'main';
+                selectedRepo.branch = 'main';
+                document.getElementById('continueBtn').disabled = false;
+            }
+        }
+        
         // Handle continue button
         document.getElementById('continueBtn').addEventListener('click', () => {
-            if (selectedRepo) {
+            if (selectedRepo && selectedRepo.branch) {
                 localStorage.setItem('selectedRepo', JSON.stringify(selectedRepo));
-                window.location.href = `/setup-project?repo=${selectedRepo.name}`;
+                window.location.href = `/setup-project?repo=${selectedRepo.name}&branch=${selectedRepo.branch}`;
             }
         });
         

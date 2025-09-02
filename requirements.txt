@@ -1,0 +1,57 @@
+# Core Web Framework
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+starlette==0.47.3
+python-multipart==0.0.20
+
+# Authentication & Security
+python-jose[cryptography]==3.5.0
+ecdsa==0.19.1
+cryptography==45.0.6
+
+# Database
+motor==3.7.1
+pymongo==4.14.1
+SQLAlchemy==2.0.43
+
+# HTTP Client
+httpx==0.28.1
+httpcore==1.0.9
+requests==2.32.5
+
+# Templates & Frontend
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+aiofiles==24.1.0
+
+# Git Integration
+GitPython==3.1.45
+gitdb==4.0.12
+smmap==5.0.2
+
+# Data Validation
+pydantic==2.11.7
+pydantic-core==2.33.2
+jsonschema==4.25.1
+jsonschema-specifications==2025.4.1
+
+# PDF Generation
+reportlab==4.4.3
+pillow==11.3.0
+
+# Environment & Config
+python-dotenv==1.1.1
+click==8.2.1
+
+# Utilities
+tenacity==9.1.2
+rich==13.7.0
+typing-extensions==4.15.0
+typing-inspection==0.4.1
+
+# Development & Testing (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1

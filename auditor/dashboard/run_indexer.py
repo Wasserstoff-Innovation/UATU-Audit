@@ -19,7 +19,7 @@ class RunIndexer:
         self.cached_portfolio: Optional[Dict[str, Any]] = None
     
     def scan_runs(self, base_path: str = ".") -> List[Dict[str, Any]]:
-        """Scan for audit runs and return indexed data."""
+        """Scan for audit runs and return indexed data including in-progress audits."""
         current_time = time.time()
         
         # Return cached data if still valid
@@ -36,6 +36,13 @@ class RunIndexer:
         # Scan all roots
         all_roots = [audits_root] + extra_roots
         
+        # Also scan user workspaces for in-progress audits
+        user_workspace_roots = [
+            Path.home() / ".uatu_audit" / "workspaces",
+            Path("/tmp") / "uatu_audit" / "workspaces",
+            Path.cwd() / "tmp" / "workspaces"
+        ]
+        
         for root_name in all_roots:
             root_dir = base_path_obj / root_name
             if not root_dir.exists():
@@ -51,6 +58,38 @@ class RunIndexer:
                 run_data = self._index_run(run_dir, root_name)
                 if run_data:
                     runs.append(run_data)
+        
+        # Scan user workspaces for in-progress audits
+        for workspace_root in user_workspace_roots:
+            if not workspace_root.exists():
+                print(f"  Workspace root does not exist: {workspace_root}")
+                continue
+                
+            print(f"🔍 Scanning workspace root: {workspace_root}")
+            
+            for user_dir in workspace_root.iterdir():
+                if not user_dir.is_dir():
+                    continue
+                    
+                print(f"  Found user directory: {user_dir.name}")
+                audits_dir = user_dir / "audits"
+                if not audits_dir.exists():
+                    print(f"    No audits directory for user {user_dir.name}")
+                    continue
+                    
+                print(f"    Scanning audits for user: {user_dir.name}")
+                    
+                for audit_dir in audits_dir.iterdir():
+                    if not audit_dir.is_dir():
+                        continue
+                        
+                    print(f"  Found user audit: {audit_dir.name} for user {user_dir.name}")
+                    audit_data = self._index_user_audit(audit_dir, user_dir.name)
+                    if audit_data:
+                        print(f"  ✓ Indexed user audit: {audit_data['ts']} status={audit_data['status']}")
+                        runs.append(audit_data)
+                    else:
+                        print(f"  ✗ Failed to index user audit: {audit_dir.name}")
         
         # Sort all runs by timestamp (newest first)
         runs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
@@ -133,6 +172,18 @@ class RunIndexer:
             elif contract_id.startswith('stellar-'):
                 kind = 'stellar'
             
+            # Check for test generation results
+            tests_file = run_dir / "tests.json"
+            has_tests = tests_file.exists()
+            test_count = 0
+            if has_tests:
+                try:
+                    with open(tests_file) as f:
+                        tests_data = json.load(f)
+                        test_count = len(tests_data.get('tests', []))
+                except:
+                    has_tests = False
+            
             return {
                 'ts': ts,
                 'path': str(run_dir),
@@ -143,6 +194,9 @@ class RunIndexer:
                 'id': contract_id,
                 'has_pdf': report_pdf.exists(),
                 'has_html': report_html.exists(),
+                'has_tests': has_tests,
+                'test_count': test_count,
+                'status': 'completed',
                 'risk_file': str(risk_file),
                 'report_html': str(report_html),
                 'report_pdf': str(report_pdf) if report_pdf.exists() else None,
@@ -151,6 +205,64 @@ class RunIndexer:
             
         except Exception as e:
             print(f"Error indexing run {run_dir}: {e}")
+            return None
+    
+    def _index_user_audit(self, audit_dir: Path, user_name: str) -> Optional[Dict[str, Any]]:
+        """Index a user audit (including in-progress ones)."""
+        try:
+            audit_id = audit_dir.name
+            
+            # Check for status file
+            status_file = audit_dir / f"{audit_id}_status.json"
+            metadata_file = audit_dir / f"{audit_id}_metadata.json"
+            
+            if not status_file.exists() and not metadata_file.exists():
+                return None
+            
+            # Load status or metadata
+            audit_data = {}
+            if status_file.exists():
+                with open(status_file) as f:
+                    audit_data = json.load(f)
+            elif metadata_file.exists():
+                with open(metadata_file) as f:
+                    audit_data = json.load(f)
+            
+            status = audit_data.get('status', 'unknown')
+            phase = audit_data.get('phase', 'unknown')
+            
+            # For completed audits, try to get more detailed info
+            if status == 'completed':
+                result_path = audit_data.get('result_path')
+                if result_path:
+                    result_dir = Path(result_path)
+                    if result_dir.exists():
+                        return self._index_run(result_dir, f'user-{user_name}')
+            
+            # For in-progress or failed audits, return basic info
+            return {
+                'ts': audit_id,
+                'path': str(audit_dir),
+                'grade': 'Pending' if status in ['running', 'cloning'] else 'Failed',
+                'overall': 0.0,
+                'delta': 0.0,
+                'kind': 'evm',  # Default assumption
+                'id': audit_id,
+                'has_pdf': False,
+                'has_html': False,
+                'has_tests': False,
+                'test_count': 0,
+                'status': status,
+                'phase': phase,
+                'user': user_name,
+                'created_at': audit_data.get('created_at', ''),
+                'updated_at': audit_data.get('updated_at', ''),
+                'error': audit_data.get('error', ''),
+                'timestamp': audit_data.get('updated_at', audit_data.get('created_at', datetime.now().isoformat()))
+            }
+            
+        except Exception as e:
+            print(f"Error indexing user audit {audit_dir}: {e}")
             return None
     
     def _index_portfolio(self, portfolio_dir: Path) -> Optional[Dict[str, Any]]:

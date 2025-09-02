@@ -186,46 +186,46 @@
         
         /* Filter cells - row 2 */
         .filter-cell {
-            background: rgba(26, 43, 62, 0.5);
+            background: rgba(26, 43, 62, 0.3);
             border: 2px solid var(--grid-line);
-            padding: 10px;
+            padding: 0;
+            overflow: hidden;
+            transition: all 0.2s ease;
         }
         
         .filter-select {
             width: 100%;
             height: 100%;
-            padding: 8px;
-            background: var(--slate-800);
+            padding: 12px 16px;
+            background: transparent;
             color: var(--ice-200);
-            border: 1px solid var(--grid-line);
-            border-radius: 4px;
-            font-size: 13px;
+            border: none;
+            font-size: 14px;
             font-family: var(--font-body);
             outline: none;
+            cursor: pointer;
         }
         
         .search-input {
             width: 100%;
-            height: 40px;
-            padding: 8px 16px;
-            background: var(--slate-800);
+            height: 100%;
+            padding: 12px 16px;
+            background: transparent;
             color: var(--ice-200);
-            border: 1px solid var(--grid-line);
-            border-radius: 4px;
+            border: none;
             font-size: 14px;
             font-family: var(--font-body);
             outline: none;
         }
         
-        .filter-select:hover,
-        .search-input:hover {
+        .filter-cell:hover {
             border-color: var(--mint-400);
+            background: rgba(76, 227, 184, 0.05);
         }
         
         .filter-select:focus,
         .search-input:focus {
-            border-color: var(--mint-400);
-            box-shadow: 0 0 0 2px rgba(76, 227, 184, 0.1);
+            background: rgba(26, 43, 62, 0.8);
         }
         
         .filter-btn {
@@ -234,7 +234,6 @@
             background: var(--halo-gold);
             color: var(--ink-900);
             border: none;
-            border-radius: 4px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -243,7 +242,6 @@
         
         .filter-btn:hover {
             background: #f5c830;
-            transform: scale(1.05);
         }
         
         /* Title cell */
@@ -375,13 +373,15 @@
         
         /* Empty state cell */
         .empty-cell {
-            grid-column: 4/10;
+            grid-column: 5/9;
             grid-row: 6/9;
-            background: rgba(26, 43, 62, 0.5);
+            background: rgba(26, 43, 62, 0.3);
             border: 2px solid var(--grid-line);
-            padding: 40px;
+            padding: 60px 40px;
             text-align: center;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
         .empty-icon {
@@ -403,17 +403,18 @@
         }
         
         .empty-btn {
-            padding: 10px 24px;
+            padding: 12px 32px;
             background: var(--mint-400);
             color: var(--ink-900);
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             text-decoration: none;
             display: inline-block;
             transition: all 0.2s;
             cursor: pointer;
+            margin-top: 8px;
         }
         
         .empty-btn:hover {
@@ -516,7 +517,7 @@
             </select>
         </div>
         
-        <div class="grid-cell filter-cell" style="grid-column: 5/11; grid-row: 2/3; padding: 8px;">
+        <div class="grid-cell filter-cell" style="grid-column: 5/11; grid-row: 2/3;">
             <form id="filterForm" method="GET" style="width: 100%; height: 100%; display: flex; align-items: center;">
                 <input type="text" 
                        name="search" 
@@ -570,8 +571,14 @@
                 {% endif %}
                     <div class="run-header">
                         <div class="run-title">{{ run.id if run.id else 'Sample' }}</div>
-                        <span class="run-badge">
-                            {{ run.grade if run.grade else 'INFO' }}
+                        <span class="run-badge" style="{% if run.status == 'running' %}background: rgba(247, 208, 70, 0.2); color: var(--halo-gold); border-color: var(--halo-gold);{% elif run.status == 'failed' %}background: rgba(239, 68, 68, 0.2); color: #EF4444; border-color: #EF4444;{% elif run.grade == 'Pending' %}background: rgba(156, 180, 198, 0.2); color: var(--ice-300); border-color: var(--ice-300);{% endif %}">
+                            {% if run.status == 'running' %}
+                                🔄 {{ run.phase|title if run.phase else 'Running' }}
+                            {% elif run.status == 'failed' %}
+                                ❌ Failed
+                            {% else %}
+                                {{ run.grade if run.grade else 'INFO' }}
+                            {% endif %}
                         </span>
                     </div>
                     
@@ -580,10 +587,29 @@
                             <span class="run-label">Type:</span>
                             <span class="run-value">{{ run.kind if run.kind else 'unknown' }}</span>
                         </div>
+                        {% if run.status == 'completed' %}
                         <div class="run-detail">
                             <span class="run-label">Score:</span>
                             <span class="run-value">{{ "%.1f"|format(run.overall) if run.overall else '0.0' }}</span>
                         </div>
+                        {% if run.has_tests %}
+                        <div class="run-detail">
+                            <span class="run-label">Tests:</span>
+                            <span class="run-value">{{ run.test_count }} generated</span>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="run-detail">
+                            <span class="run-label">Status:</span>
+                            <span class="run-value">{{ run.phase if run.phase else run.status }}</span>
+                        </div>
+                        {% if run.user %}
+                        <div class="run-detail">
+                            <span class="run-label">User:</span>
+                            <span class="run-value">{{ run.user }}</span>
+                        </div>
+                        {% endif %}
+                        {% endif %}
                         <div class="run-detail">
                             <span class="run-label">Timestamp:</span>
                             <span class="run-value">{{ run.ts if run.ts else '20250831_093846' }}</span>
@@ -591,12 +617,31 @@
                     </div>
                     
                     <div class="run-actions">
+                        {% if run.status == 'completed' %}
                         <a href="/run/{{ run.ts }}" class="run-btn run-btn-primary">
                             View Details
                         </a>
+                        {% if run.has_tests %}
+                        <a href="#" class="run-btn run-btn-secondary" onclick="alert('Test viewing feature coming soon!')">
+                            🧪 Tests ({{ run.test_count }})
+                        </a>
+                        {% endif %}
                         {% if run.has_pdf %}
                         <a href="/download/pdf/{{ run.ts }}" class="run-btn run-btn-secondary">
-                            Download PDF
+                            📄 Download PDF
+                        </a>
+                        {% endif %}
+                        {% elif run.status == 'running' %}
+                        <a href="#" class="run-btn run-btn-secondary" onclick="refreshStatus('{{ run.id }}')">
+                            🔄 Refresh Status
+                        </a>
+                        {% elif run.status == 'failed' %}
+                        <a href="#" class="run-btn run-btn-secondary" onclick="showError('{{ run.error|e }}')">
+                            ❌ View Error
+                        </a>
+                        {% else %}
+                        <a href="/run/{{ run.ts }}" class="run-btn run-btn-primary">
+                            View Details
                         </a>
                         {% endif %}
                     </div>
@@ -677,14 +722,14 @@
             {% endif %}
             
         {% else %}
-            <!-- Empty state -->
-            <div class="grid-cell bg-cell" style="grid-column: 1/4; grid-row: 4/6;"></div>
-            <div class="grid-cell bg-cell" style="grid-column: 10/13; grid-row: 4/6;"></div>
-            <div class="grid-cell bg-cell" style="grid-column: 1/4; grid-row: 6/9;"></div>
-            <div class="grid-cell bg-cell" style="grid-column: 10/13; grid-row: 6/9;"></div>
-            <div class="grid-cell bg-cell" style="grid-column: 1/4; grid-row: 9/11;"></div>
-            <div class="grid-cell bg-cell" style="grid-column: 10/13; grid-row: 9/11;"></div>
+            <!-- Empty state - cleaner grid layout -->
+            <!-- Row 4-5: Top empty cells -->
+            <div class="grid-cell bg-cell" style="grid-column: 1/5; grid-row: 4/6;"></div>
+            <div class="grid-cell bg-cell" style="grid-column: 5/9; grid-row: 4/6;"></div>
+            <div class="grid-cell bg-cell" style="grid-column: 9/13; grid-row: 4/6;"></div>
             
+            <!-- Row 6-8: Middle row with empty state message -->
+            <div class="grid-cell bg-cell" style="grid-column: 1/5; grid-row: 6/9;"></div>
             <div class="grid-cell empty-cell">
                 <div class="empty-icon">🔍</div>
                 <h2 class="empty-title">No audit runs found</h2>
@@ -693,8 +738,12 @@
                 </p>
                 <a href="/" class="empty-btn">🚀 Start Auditing</a>
             </div>
+            <div class="grid-cell bg-cell" style="grid-column: 9/13; grid-row: 6/9;"></div>
             
-            <!-- Fill bottom row -->
+            <!-- Row 9-12: Bottom empty cells -->
+            <div class="grid-cell bg-cell" style="grid-column: 1/5; grid-row: 9/11;"></div>
+            <div class="grid-cell bg-cell" style="grid-column: 5/9; grid-row: 9/11;"></div>
+            <div class="grid-cell bg-cell" style="grid-column: 9/13; grid-row: 9/11;"></div>
             <div class="grid-cell bg-cell" style="grid-column: 1/5; grid-row: 11/13;"></div>
             <div class="grid-cell bg-cell" style="grid-column: 5/9; grid-row: 11/13;"></div>
             <div class="grid-cell bg-cell" style="grid-column: 9/13; grid-row: 11/13;"></div>
@@ -725,6 +774,24 @@
                 document.getElementById('walletAddress').textContent = short;
             }
         });
+        
+        // Functions for audit actions
+        function refreshStatus(auditId) {
+            fetch(`/api/audit/status?audit_id=${auditId}`)
+                .then(response => response.json())
+                .then(data => {
+                    alert(`Status: ${data.status} - ${data.phase || ''}\nUpdated: ${data.updated_at}`);
+                    // Optionally reload the page to show updated status
+                    window.location.reload();
+                })
+                .catch(error => {
+                    alert('Error fetching status: ' + error.message);
+                });
+        }
+        
+        function showError(errorMsg) {
+            alert(`Audit Error:\n\n${errorMsg}`);
+        }
     </script>
 </body>
 </html>

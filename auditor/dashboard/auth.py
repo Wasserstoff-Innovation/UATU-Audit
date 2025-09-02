@@ -196,8 +196,12 @@ async def github_callback(request: Request) -> RedirectResponse:
             if not await verify_user_access(user_info):
                 return RedirectResponse(url='/?error=access_denied')
             
-            # Set user session
+            # Set user session with GitHub token
+            user_info['github_token'] = access_token
             set_user_session(request, user_info)
+            
+            # Store GitHub token in session for API calls
+            request.session['github_token'] = access_token
             
             # Clear OAuth state
             request.session.pop('oauth_state', None)
