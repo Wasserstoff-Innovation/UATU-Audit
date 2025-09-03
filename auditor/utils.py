@@ -30,7 +30,11 @@ def copy_source_to_work(src: str, work_src: Path) -> None:
     if p.is_file():
         shutil.copy2(p, work_src / p.name)
     elif p.is_dir():
-        shutil.copytree(p, work_src, dirs_exist_ok=True)
+        # Exclude VCS and build artifacts
+        def _ignore(dir, names):
+            ignore = {'.git', '.hg', '.svn', '.idea', '.vscode', 'node_modules', 'target', 'build', 'dist'}
+            return [n for n in names if n in ignore]
+        shutil.copytree(p, work_src, dirs_exist_ok=True, ignore=_ignore)
     else:
         raise FileNotFoundError(f"Input path not found: {src}")
 

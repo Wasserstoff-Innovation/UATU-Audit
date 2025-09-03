@@ -616,8 +616,28 @@ def get_user_workspace(user_login: str) -> Path:
     if not workspace_root:
         raise RuntimeError("No writable directory found for user workspaces")
     
+    # Ensure strict permissions on workspace root and user directory
+    try:
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        os.chmod(workspace_root, 0o700)
+    except Exception:
+        pass
+
     user_workspace = workspace_root / user_login
     user_workspace.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(user_workspace, 0o700)
+    except Exception:
+        pass
+
+    # Pre-create segregated subdirs with restrictive permissions
+    for sub in ("repos", "audits"):
+        sd = user_workspace / sub
+        sd.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(sd, 0o700)
+        except Exception:
+            pass
     return user_workspace
 
 def generate_audit_id(repo_name: str, branch: str, user: str) -> str:

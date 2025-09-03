@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio - UatuAudit</title>
+  <style>
+    body { background:#0B1B2B; color:#D5E4F0; font-family: Inter, system-ui, sans-serif; margin:0; padding:24px; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    h1 { color:#F7D046; }
+    .card { background: rgba(16,33,50,0.5); border:1px solid rgba(84,130,158,.4); border-radius:8px; padding:16px; margin-top:16px; }
+    .row { display:flex; gap:12px; align-items:center; }
+    .btn { display:inline-block; padding:8px 12px; border-radius:6px; text-decoration:none; border:1px solid rgba(84,130,158,.4); color:#D5E4F0; }
+    .btn:hover { border-color:#4CE3B8; color:#4CE3B8; }
+    .muted { color:#9CB4C6; font-size:14px; }
+  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    function back(){ window.location.href = '/dashboard'; }
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <a class="btn" href="/dashboard">← Back</a>
+    <h1>Portfolio</h1>
+    {% if error %}
+      <div class="card">{{ error }}</div>
+    {% elif portfolio %}
+      <div class="card">
+        <div class="row">
+          <div>Timestamp:</div>
+          <div class="muted">{{ portfolio.ts }}</div>
+        </div>
+        <div class="row">
+          <div>Overall:</div>
+          <div class="muted">{{ '%.1f'|format(portfolio.overall) }}</div>
+        </div>
+        <div style="margin-top:12px;">
+          {% if portfolio.portfolio_pdf %}<a class="btn" href="/download/portfolio.pdf">Download PDF</a>{% endif %}
+          {% if portfolio.portfolio_csv %}<a class="btn" href="/download/portfolio.csv">Download CSV</a>{% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="card">No portfolio data yet.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
+
+

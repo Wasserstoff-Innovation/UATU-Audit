@@ -42,6 +42,8 @@ class Orchestrator:
         self.workdir = self.outdir / "work"
         self.srcdir = self.workdir / "src"
         (self.outdir / "runs").mkdir(parents=True, exist_ok=True)
+        # basic JSONL log for step-by-step progress
+        self.log_path = self.outdir / "runs" / "orchestrator.log.jsonl"
 
     def _build_abi_map(self, flows: dict) -> dict:
         abi = {"functions": {}, "events": {}, "errors": {}}
@@ -71,6 +73,7 @@ class Orchestrator:
         (d/"abi.json").write_text(__import__("json").dumps(abi, indent=2))
 
     def _prepare(self) -> None:
+        self._log("prepare", {"input": self.input, "kind": self.kind})
         if self.kind not in ["evm", "stellar"]:
             raise NotImplementedError("Task 7 supports EVM and stellar (Rust) only for now.")
         if Path(self.input).exists():
@@ -91,6 +94,7 @@ class Orchestrator:
                 raise ValueError("stellar kind requires a file path, not an address.")
 
     def _explore(self) -> dict:
+        self._log("explore.start", {})
         flows = extract_flows_from_dir(self.srcdir, kind=self.kind)
         # validate and write
         validate_json(flows, Path("auditor/schemas/flows.schema.json"))
@@ -98,12 +102,14 @@ class Orchestrator:
         return flows
 
     def _journeys(self, flows: dict) -> dict:
+        self._log("journeys.start", {"contracts": len(flows.get("contracts") or [])})
         journeys = make_journeys(flows)
         validate_json(journeys, Path("auditor/schemas/journeys.schema.json"))
         json_dump_atomic(self.outdir / "journeys.json", journeys)
         return journeys
 
     def _threats(self, flows: dict, journeys: dict) -> dict:
+        self._log("slither.start", {})
         # Run Slither (Docker). Always write something even on failure.
         static_dir = self.outdir / "runs" / "static"
         static_dir.mkdir(parents=True, exist_ok=True)
@@ -121,6 +127,7 @@ class Orchestrator:
         return threats
 
     def _generate_tests(self, flows: dict, journeys: dict, threats: dict) -> dict:
+        self._log("tests.start", {"journey_count": len(journeys.get("journeys") or [])})
         provider_meta = detect_provider(self.llm_provider if self.llm else "off")
         # allow override model
         if self.llm and self.llm_model:
@@ -154,6 +161,7 @@ class Orchestrator:
         return tests
 
     def _run_tests(self) -> dict:
+        self._log("tests.run.start", {})
         results = {"runs": []}
         test_root = self.outdir / "tests" / ("evm" if self.kind=="evm" else "soroban")
         runs_dir = self.outdir / "runs" / "tests"
@@ -166,9 +174,11 @@ class Orchestrator:
                 else:
                     res = run_cargo_tests(proj, out_file)
                 results["runs"].append(res)
+        self._log("tests.run.end", {"runs": len(results.get("runs", []))})
         return results
 
     def _compute_and_save_risk(self, flows, threats):
+        self._log("risk.start", {})
         runs_dir = self.outdir / "runs"
         risk_dir = runs_dir / "risk"
         risk_dir.mkdir(parents=True, exist_ok=True)
@@ -229,11 +239,13 @@ class Orchestrator:
         return history
 
     def _report(self) -> None:
+        self._log("report.start", {})
         # very small report that lists contracts and functions
         from .report.builder import build_report
         build_report(self.outdir)
 
     def run(self) -> Path:
+        self._log("run.start", {"outdir": str(self.outdir)})
         self._prepare()
         flows = self._explore()
         journeys = self._journeys(flows)
@@ -318,4 +330,15 @@ class Orchestrator:
             except Exception as e:
                 print(f"[warn] PDF generation failed: {e}")
         
+        self._log("run.end", {"outdir": str(self.outdir)})
         return self.outdir
+
+    def _log(self, event: str, data: dict) -> None:
+        try:
+            import json, time
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            rec = {"ts": datetime.utcnow().isoformat()+"Z", "event": event, **(data or {})}
+            with open(self.log_path, 'a') as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception:
+            pass

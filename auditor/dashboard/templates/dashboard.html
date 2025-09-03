@@ -429,14 +429,14 @@
         // Load audit history
         async function loadAuditHistory() {
             try {
-                const response = await fetch('/api/audits/history', {
+                const response = await fetch('/api/audits/list', {
                     headers: {
                         'Authorization': `Bearer ${sessionData.session_id}`
                     }
                 });
-                
                 if (response.ok) {
-                    const audits = await response.json();
+                    const data = await response.json();
+                    const audits = Array.isArray(data) ? data : (data.audits || []);
                     displayAudits(audits);
                 } else {
                     console.error('Failed to load audit history');
@@ -478,15 +478,19 @@
             const card = document.createElement('div');
             card.className = 'audit-card';
             
-            const statusClass = `status-${audit.status}`;
-            const score = audit.security_score || 0;
-            const timestamp = new Date(audit.created_at).toLocaleDateString();
+            const status = audit.status || 'completed';
+            const statusClass = `status-${status}`;
+            const score = (audit.summary && audit.summary.overall) || audit.overall || 0;
+            const timestamp = new Date(audit.created_at || audit.timestamp || Date.now()).toLocaleString();
+            const repoName = audit.repo_name || audit.id || 'Sample';
+            const branch = audit.branch || audit.kind || 'unknown';
+            const tsId = audit.ts || audit.id || '';
             
             card.innerHTML = `
-                <div class="audit-title">${audit.repo_name || 'Sample'}</div>
+                <div class="audit-title">${repoName}</div>
                 <div class="audit-meta">
-                    <span>Type: ${audit.branch || 'unknown'}</span>
-                    <span class="status-badge ${statusClass}">${audit.status}</span>
+                    <span>Type: ${branch}</span>
+                    <span class="status-badge ${statusClass}">${status}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
                     <div>
@@ -499,8 +503,8 @@
                     </div>
                 </div>
                 <div class="audit-actions">
-                    <a href="/run/${audit.id}" class="btn btn-primary">View Details</a>
-                    ${audit.pdf_path ? `<a href="/download/pdf/${audit.id}" class="btn btn-secondary">Download PDF</a>` : ''}
+                    ${tsId ? `<a href="/run/${tsId}" class="btn btn-primary">View Details</a>` : ''}
+                    ${audit.report_pdf || audit.pdf_path ? `<a href="/download/pdf/${tsId}" class="btn btn-secondary">Download PDF</a>` : ''}
                 </div>
             `;
             

@@ -60,6 +60,7 @@ class RunIndexer:
                     runs.append(run_data)
         
         # Scan user workspaces for in-progress audits
+        only_user = os.getenv('UATU_WORKSPACE_USER')
         for workspace_root in user_workspace_roots:
             if not workspace_root.exists():
                 print(f"  Workspace root does not exist: {workspace_root}")
@@ -69,6 +70,8 @@ class RunIndexer:
             
             for user_dir in workspace_root.iterdir():
                 if not user_dir.is_dir():
+                    continue
+                if only_user and user_dir.name != only_user:
                     continue
                     
                 print(f"  Found user directory: {user_dir.name}")

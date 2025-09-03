@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import httpx
-import jwt
+from jose import JWTError, jwt
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -122,7 +122,7 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Depends(securit
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=["HS256"])
         return payload
-    except jwt.InvalidTokenError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 def verify_webhook_signature(request_body: bytes, signature: str) -> bool:

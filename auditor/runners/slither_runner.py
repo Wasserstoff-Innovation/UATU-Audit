@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, json, shutil, subprocess
+import os, json, shutil, subprocess, platform
 from pathlib import Path
 from typing import Dict, Any
 
@@ -30,14 +30,25 @@ def run_slither(src_dir: Path, out_dir: Path, mode: str = "auto") -> Dict[str, A
     if mode in ("auto","host"):
         if _host_docker_available():
             # Run the official Slither image against /src and write JSON to /out
-            cmd = [
-                "docker","run","--rm",
-                "-v", f"{src_dir}:/src:ro",
-                "-v", f"{out_dir}:/out",
-                "-w", "/src",
-                SLITHER_IMAGE,
-                "slither", "/src", "--json", "/out/slither.json"
-            ]
+            docker_platform = []
+            try:
+                mach = platform.machine().lower()
+                if "arm" in mach or "aarch64" in mach:
+                    docker_platform = ["--platform", "linux/arm64"]
+            except Exception:
+                docker_platform = []
+
+            cmd = (
+                ["docker","run","--rm"]
+                + docker_platform
+                + [
+                    "-v", f"{src_dir}:/src:ro",
+                    "-v", f"{out_dir}:/out",
+                    "-w", "/src",
+                    SLITHER_IMAGE,
+                    "slither", "/src", "--json", "/out/slither.json"
+                ]
+            )
             try:
                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
                 ok = proc.returncode == 0 and (out_dir / "slither.json").exists()

@@ -7,6 +7,36 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from jinja2 import Environment, FileSystemLoader
 
+def render_pdf(html_path: str, out_pdf: str, base_url: str) -> bool:
+    """
+    Render a PDF from a pre-rendered HTML file using WeasyPrint if available.
+
+    Args:
+        html_path: Path to the existing HTML file to convert
+        out_pdf: Output PDF path
+        base_url: Base URL (directory) for resolving relative assets
+
+    Returns:
+        True if PDF created, False if fell back to leaving HTML only
+    """
+    try:
+        html_text = Path(html_path).read_text()
+    except Exception as e:
+        print(f"❌ PDF generation failed: cannot read HTML: {e}")
+        return False
+
+    try:
+        from weasyprint import HTML
+        # Optional: styles can be handled by the HTML itself; rely on base_url for assets
+        HTML(string=html_text, base_url=str(base_url)).write_pdf(out_pdf)
+        return True
+    except ImportError:
+        print("⚠️  WeasyPrint not available, keeping HTML only")
+        return False
+    except Exception as e:
+        print(f"❌ PDF generation failed: {e}")
+        return False
+
 def render_letterhead(context: Dict[str, Any], out_pdf: Path, base_url: Path) -> bool:
     """
     Render a professional PDF with letterhead and watermark.

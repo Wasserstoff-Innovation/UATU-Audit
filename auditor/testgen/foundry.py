@@ -241,9 +241,12 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
         test = proj / "test"
         src.mkdir(parents=True, exist_ok=True)
         test.mkdir(parents=True, exist_ok=True)
-        # copy all sources from work/src into project src
+        # copy all sources from work/src into project src, excluding VCS/build dirs
         if work_src.exists():
-            shutil.copytree(work_src, src, dirs_exist_ok=True)
+            def _ignore(dir, names):
+                ignore = {'.git', '.hg', '.svn', '.idea', '.vscode', 'node_modules', 'target', 'build', 'dist'}
+                return [n for n in names if n in ignore]
+            shutil.copytree(work_src, src, dirs_exist_ok=True, ignore=_ignore)
         # find defining file for import path
         cfile = _find_contract_file(src, c_name)
         if not cfile:

@@ -11,20 +11,28 @@ from pathlib import Path
 
 def check_requirements():
     """Check if all required packages are installed"""
-    required_packages = [
-        'fastapi', 'uvicorn', 'httpx', 'python-jose', 
-        'python-multipart', 'sqlalchemy', 'python-dotenv',
-        'GitPython', 'pydantic', 'cryptography'
-    ]
-    
+    # Map distribution/package names to import module names
+    required_imports = {
+        'fastapi': 'fastapi',
+        'uvicorn': 'uvicorn',
+        'httpx': 'httpx',
+        'python-jose': 'jose',
+        'python-multipart': 'multipart',
+        'SQLAlchemy': 'sqlalchemy',
+        'python-dotenv': 'dotenv',
+        'GitPython': 'git',
+        'pydantic': 'pydantic',
+        'cryptography': 'cryptography',
+    }
+
     missing_packages = []
-    
-    for package in required_packages:
+
+    for dist_name, import_name in required_imports.items():
         try:
-            __import__(package.replace('-', '_'))
+            __import__(import_name)
         except ImportError:
-            missing_packages.append(package)
-    
+            missing_packages.append(dist_name)
+
     if missing_packages:
         print("❌ Missing required packages:")
         for package in missing_packages:
@@ -34,7 +42,7 @@ def check_requirements():
         print("\n   OR install all at once:")
         print("   pip install -r backend/requirements.txt")
         return False
-    
+
     return True
 
 def setup_environment():
