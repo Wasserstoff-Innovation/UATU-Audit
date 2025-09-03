@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8"/>
   <title>{{ title or "UatuAudit Report" }}</title>
-  <link rel="stylesheet" href="{{ static_url('print.css') }}">
+  <link rel="stylesheet" href="print.css">
   <style>
     :root{
-      --ink:#0b1b2b; --slate:#17293c; --edge:#1f3b57; --glow:#f7d046;
-      --ready:#2e7d32; --pass:#0288d1; --warn:#fbc02d; --risk:#f57c00; --crit:#d32f2f; --muted:#9cb3c9;
-      --paper:#0b0f14; --panel:#111824;
+      --ink:#2c3e50; --slate:#34495e; --edge:#7f8c8d; --glow:#f7d046;
+      --ready:#28a745; --pass:#007bff; --warn:#ffc107; --risk:#fd7e14; --crit:#dc3545; --muted:#6c757d;
+      --paper:#ffffff; --panel:#f8f9fa;
     }
   </style>
 </head>
@@ -18,7 +18,9 @@
 <section class="cover page-full">
   <div class="cover-halo"></div>
   <div class="cover-header">
-    <div class="uatu-logo">🦉</div>
+    <div class="uatu-logo">
+      <img src="{{ asset_base }}/uatu-logo.svg" alt="Uatu Logo" style="width:120px;height:auto;">
+    </div>
     <div>
       <h1>UatuAudit</h1>
       <h2>{{ report_kind|default('Contract Security Audit') }}</h2>

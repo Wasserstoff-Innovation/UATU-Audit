@@ -28,7 +28,7 @@ def _run(cmd, cwd: Path) -> str:
 
 def run_forge_tests(project_dir: Path, out_json: Path) -> Dict[str, Any]:
     try:
-        out = _run(["forge", "test", "-vvv"], project_dir)
+        out = _run(["forge", "test", "-vv"], project_dir)
         passed = failed = 0
         m = SUMMARY_RE.search(out)
         if m:

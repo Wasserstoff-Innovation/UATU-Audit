@@ -22,10 +22,11 @@ from starlette.middleware.sessions import SessionMiddleware
 from .security import setup_sessions
 from .views import (
     github_auth, auth_callback, logout,
-    runs_page, run_detail, portfolio_page,
+    runs_page, run_detail, portfolio_page, projects_page,
     download_pdf, download_portfolio_pdf, download_csv,
     health_check, landing_page, onboarding_repos, api_github_repos, api_github_branches, 
-    api_audit_status, api_list_user_audits, test_endpoint, test_oauth, setup_project
+    api_audit_status, api_list_user_audits, test_endpoint, test_oauth, setup_project,
+    api_run_status, api_run_logs, api_projects, api_project_runs
 )
 # Temporarily disable wallet auth imports until dependencies are installed
 # from .wallet_auth import authenticate_wallet, link_github_to_wallet, logout_user
@@ -49,6 +50,7 @@ app.mount("/static", StaticFiles(directory="auditor/dashboard/static"), name="st
 # Routes
 app.add_api_route("/", landing_page, methods=["GET"])  # Landing page as main entry
 app.add_api_route("/dashboard", runs_page, methods=["GET"])  # Dashboard requires auth
+app.add_api_route("/projects", projects_page, methods=["GET"])  # Projects page
 app.add_api_route("/auth/github", github_auth, methods=["GET"])
 app.add_api_route("/auth/callback", auth_callback, methods=["GET"])
 app.add_api_route("/logout", logout, methods=["GET"])
@@ -62,6 +64,10 @@ app.add_api_route("/onboarding/repos", onboarding_repos, methods=["GET"])
 # app.add_api_route("/api/github/branches", api_github_branches, methods=["GET"])  # Using direct endpoint instead
 app.add_api_route("/api/audit/status", api_audit_status, methods=["GET"])
 app.add_api_route("/api/audits/list", api_list_user_audits, methods=["GET"])
+app.add_api_route("/api/runs/{ts}/status", api_run_status, methods=["GET"])
+app.add_api_route("/api/runs/{ts}/logs", api_run_logs, methods=["GET"])
+app.add_api_route("/api/projects", api_projects, methods=["GET"])
+app.add_api_route("/api/projects/{owner_repo}/runs", api_project_runs, methods=["GET"])
 app.add_api_route("/setup-project", setup_project, methods=["GET"])
 app.add_api_route("/test-endpoint", test_endpoint, methods=["GET"])
 app.add_api_route("/test-oauth", test_oauth, methods=["GET"])

@@ -122,25 +122,8 @@ async def runs_page(request: Request):
     })
 
 async def run_detail(request: Request, ts: str):
-    """Individual run detail page - requires authentication."""
-    user = get_current_user(request)
-    
-    # Redirect to landing page if not authenticated
-    if not user:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/", status_code=302)
-    
-    run = indexer.get_run_by_ts(ts)
-    
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-    
-    return templates.TemplateResponse("run_detail.html", {
-        "request": request,
-        "user": user,
-        "run": run,
-        "get_grade_color": get_grade_color
-    })
+    """Run detail page with timeline and streaming logs."""
+    return templates.TemplateResponse("run_detail.html", {"request": request})
 
 async def portfolio_page(request: Request):
     """Portfolio overview page - requires authentication."""
@@ -167,6 +150,10 @@ async def portfolio_page(request: Request):
         "portfolio": portfolio,
         "get_grade_color": get_grade_color
     })
+
+async def projects_page(request: Request):
+    """Projects page showing all projects with branches and status."""
+    return templates.TemplateResponse("projects.html", {"request": request})
 
 async def download_pdf(request: Request, ts: str):
     """Download PDF for a run - requires authentication."""
@@ -678,15 +665,24 @@ async def clone_repository(repo_url: str, branch: str, clone_path: Path, github_
         print(f"Error cloning repository: {e}")
         return False
 
-async def run_audit_process(audit_path: Path, audit_id: str, user_login: str) -> dict:
+async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, repo_name: str | None = None, branch_name: str | None = None) -> dict:
     """Run the UatuAudit process on cloned repository with test generation."""
     try:
         # Import the Orchestrator from core
         from ..core import Orchestrator
         
-        # Setup audit output directory
-        audit_output = audit_path.parent / "audits" / audit_id
-        audit_output.mkdir(parents=True, exist_ok=True)
+        # Determine repo/branch for project layout
+        repo_name = repo_name or audit_path.name
+        branch_name = branch_name or 'main'
+
+        user_workspace = get_user_workspace(user_login)
+        project_id = (repo_name or 'adhoc').replace('/', '~')
+        project_root = user_workspace / 'projects' / project_id
+        branch_root = project_root / 'branches' / (branch_name or 'main')
+        (branch_root / 'shared').mkdir(parents=True, exist_ok=True)
+
+        # Orchestrator out_root will be branch_root; it will create runs/<ts>
+        audit_output = branch_root
         
         # Update status to running
         status_file = audit_output / f"{audit_id}_status.json"
@@ -747,6 +743,14 @@ async def run_audit_process(audit_path: Path, audit_id: str, user_login: str) ->
         # Save metadata
         metadata_file = audit_output / f"{audit_id}_metadata.json"
         with open(metadata_file, 'w') as f:
+            json.dump(audit_result, f, indent=2)
+
+        # Back-compat: mirror status/metadata to legacy folder for existing UI
+        legacy_dir = user_workspace / 'audits' / audit_id
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        with open(legacy_dir / f"{audit_id}_status.json", 'w') as f:
+            json.dump(status_data, f, indent=2)
+        with open(legacy_dir / f"{audit_id}_metadata.json", 'w') as f:
             json.dump(audit_result, f, indent=2)
         
         print(f"Audit completed for {audit_id}: {result_path}")
@@ -897,7 +901,9 @@ async def setup_project(request: Request):
                 print(f"Audit workflow failed for {audit_id}: {e}")
         
         # Start background task using asyncio
-        asyncio.create_task(audit_workflow())
+        async def _runner():
+            await run_audit_process(repo_clone_path, audit_id, user_login, repo_name=repo_name, branch_name=branch_name)
+        asyncio.create_task(_runner())
         
         print(f"Queued audit for {user_login}: {repo_name}@{branch_name} (ID: {audit_id})")
         
@@ -989,3 +995,154 @@ async def test_oauth(request: Request):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+# --- New: Projects and runs listing (provisional grouping) ---
+async def api_projects(request: Request):
+    """List projects for current user. Provisional: groups available runs under a single 'adhoc' project if migration not done."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    # Scan user workspace projects
+    ws = get_user_workspace(user.get('login','demo-user'))
+    projects_root = ws / 'projects'
+    projects = []
+    if projects_root.exists():
+        for proj in sorted(projects_root.iterdir()):
+            if not proj.is_dir():
+                continue
+            owner_repo = proj.name.replace('~','/')
+            branches_root = proj / 'branches'
+            branches = []
+            if branches_root.exists():
+                for br in sorted(branches_root.iterdir()):
+                    if not br.is_dir():
+                        continue
+                    runs_root = br / 'runs'
+                    last_run = None
+                    if runs_root.exists():
+                        rdirs = [d for d in runs_root.iterdir() if d.is_dir()]
+                        rdirs.sort(reverse=True)
+                        if rdirs:
+                            # try read risk.json for score/grade
+                            risk = rdirs[0] / 'runs' / 'risk' / 'risk.json'
+                            score = 0.0
+                            grade = 'Info'
+                            if risk.exists():
+                                try:
+                                    j = __import__('json').loads(risk.read_text())
+                                    sc = j.get('summary',{})
+                                    score = float(sc.get('overall',0.0))
+                                    grade = sc.get('grade','Info')
+                                except Exception:
+                                    pass
+                            last_run = {"ts": rdirs[0].name, "status": 'completed', "score": score, "grade": grade, "delta": 0.0}
+                    branches.append({
+                        "name": br.name,
+                        "last_run": last_run,
+                        "errors": 0,
+                        "updated_at": datetime.utcnow().isoformat()+"Z"
+                    })
+            projects.append({
+                "id": owner_repo,
+                "owner_repo": owner_repo,
+                "branches": branches,
+                "settings": {"llm":"auto","journey_cap":5,"stress":"small"}
+            })
+    return {"projects": projects}
+
+async def api_project_runs(request: Request, owner_repo: str):
+    """List runs for a given project (placeholder: returns all runs)."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    branch = request.query_params.get('branch','main')
+    limit = int(request.query_params.get('limit','50'))
+    cursor = request.query_params.get('cursor')
+    # Read from project layout directly
+    ws = get_user_workspace(user.get('login','demo-user'))
+    proj_dir = ws / 'projects' / owner_repo.replace('/','~') / 'branches' / branch
+    runs_root = proj_dir / 'runs'
+    out = []
+    next_cursor = None
+    if runs_root.exists():
+        rdirs = [d for d in runs_root.iterdir() if d.is_dir()]
+        rdirs.sort(reverse=True)
+        if cursor:
+            rdirs = [d for d in rdirs if d.name < cursor]
+        page = rdirs[:limit]
+        if len(page) == limit:
+            next_cursor = page[-1].name
+        for rd in page:
+            score = 0.0
+            grade = 'Info'
+            risk = rd / 'runs' / 'risk' / 'risk.json'
+            if risk.exists():
+                try:
+                    j = __import__('json').loads(risk.read_text())
+                    sc = j.get('summary',{})
+                    score = float(sc.get('overall',0.0))
+                    grade = sc.get('grade','Info')
+                except Exception:
+                    pass
+            out.append({
+                "ts": rd.name,
+                "status": 'completed' if (rd / 'report.html').exists() else 'running',
+                "phase": 'report' if (rd / 'report.html').exists() else 'analysis',
+                "pct": 100 if (rd / 'report.html').exists() else 0,
+                "score": score,
+                "grade": grade,
+                "delta": 0.0,
+                "artifact": {"html": str(rd / 'report.html'), "pdf": str(rd / 'report.pdf') if (rd / 'report.pdf').exists() else None}
+            })
+    return {"branch": branch, "runs": out, "next": next_cursor}
+
+# --- New: Run status and logs APIs ---
+async def api_run_status(request: Request, ts: str):
+    """Return status for a given run timestamp."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    run = indexer.get_run_by_ts(ts)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    run_dir = Path(run['path'])
+    status_path = run_dir / 'status.json'
+    result = {"ts": ts, "phase": "unknown", "pct": 0}
+    if status_path.exists():
+        try:
+            import json
+            result.update(json.loads(status_path.read_text()))
+        except Exception:
+            pass
+    return result
+
+async def api_run_logs(request: Request, ts: str):
+    """Tail JSONL logs for a run with byte offset and limit of lines."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        offset = int(request.query_params.get('offset', '0'))
+        limit = int(request.query_params.get('limit', '500'))
+    except Exception:
+        offset, limit = 0, 500
+    run = indexer.get_run_by_ts(ts)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    log_path = Path(run['path']) / 'runs' / 'orchestrator.log.jsonl'
+    next_offset = offset
+    lines = []
+    if log_path.exists():
+        with open(log_path, 'rb') as f:
+            f.seek(offset)
+            for _ in range(limit):
+                pos = f.tell()
+                line = f.readline()
+                if not line:
+                    break
+                next_offset = f.tell()
+                try:
+                    lines.append(__import__('json').loads(line.decode('utf-8').strip()))
+                except Exception:
+                    lines.append({"t":"", "phase":"", "level":"info", "msg": line.decode('utf-8','ignore').strip(), "meta":{}})
+    return {"offset": next_offset, "lines": lines}

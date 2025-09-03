@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uatu Projects</title>
+    <link rel="stylesheet" href="/static/landing.css">
+    <style>
+        .projects-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .projects-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .project-card {
+            background: var(--panel);
+            border: 1px solid var(--edge);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .project-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .project-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--glow);
+            margin-bottom: 10px;
+        }
+        .project-id {
+            font-family: monospace;
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .branches-list {
+            margin-bottom: 15px;
+        }
+        .branch-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(31,59,87,0.3);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .branch-name {
+            font-weight: 600;
+            color: #e9eef3;
+        }
+        .branch-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-completed { background: var(--ok); color: white; }
+        .status-running { background: var(--warn); color: #333; }
+        .status-failed { background: var(--danger); color: white; }
+        .status-pending { background: var(--muted); color: white; }
+        .score {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--glow);
+        }
+        .delta {
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .delta-up { color: var(--danger); }
+        .delta-down { color: var(--ok); }
+        .start-audit-btn {
+            background: linear-gradient(180deg, #203b57, #162b40);
+            border: 1px solid #406285;
+            color: #e9eef3;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .start-audit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .empty-state h3 {
+            color: var(--glow);
+            margin-bottom: 10px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body class="uatu">
+    <div class="bg-halo"></div>
+    <div class="bg-noise"></div>
+    
+    <nav class="nav">
+        <div class="brand">
+            <img src="/static/uatu-logo.svg" alt="Uatu" class="logo">
+            <span class="wordmark">UatuAudit</span>
+        </div>
+        <div>
+            <a href="/">Dashboard</a>
+            <a href="/projects" class="btn primary">Projects</a>
+            <a href="/portfolio" class="btn ghost">Portfolio</a>
+        </div>
+    </nav>
+
+    <div class="projects-container">
+        <div class="projects-header">
+            <h1>Projects</h1>
+            <a href="/onboard" class="btn primary">Start New Audit</a>
+        </div>
+
+        <div id="projects-content">
+            <div class="loading">Loading projects...</div>
+        </div>
+    </div>
+
+    <script>
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                
+                const content = document.getElementById('projects-content');
+                
+                if (!data.projects || data.projects.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No projects yet</h3>
+                            <p>Start your first audit to see projects here</p>
+                            <a href="/onboard" class="btn primary" style="margin-top: 20px;">Start Audit</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const projectsHtml = data.projects.map(project => {
+                    const branchesHtml = project.branches.map(branch => {
+                        const lastRun = branch.last_run;
+                        let statusClass = 'status-pending';
+                        let statusText = 'No runs';
+                        
+                        if (lastRun) {
+                            switch (lastRun.status) {
+                                case 'completed':
+                                    statusClass = 'status-completed';
+                                    statusText = 'Completed';
+                                    break;
+                                case 'running':
+                                    statusClass = 'status-running';
+                                    statusText = 'Running';
+                                    break;
+                                case 'failed':
+                                    statusClass = 'status-failed';
+                                    statusText = 'Failed';
+                                    break;
+                                default:
+                                    statusClass = 'status-pending';
+                                    statusText = 'Pending';
+                            }
+                        }
+                        
+                        const deltaHtml = lastRun && lastRun.delta ? 
+                            `<span class="delta ${lastRun.delta > 0 ? 'delta-up' : 'delta-down'}">
+                                ${lastRun.delta > 0 ? '+' : ''}${lastRun.delta.toFixed(1)}
+                            </span>` : '';
+                        
+                        return `
+                            <div class="branch-item">
+                                <div>
+                                    <div class="branch-name">${branch.name}</div>
+                                    ${lastRun ? `<div class="score">Score: ${lastRun.score.toFixed(1)} ${deltaHtml}</div>` : ''}
+                                </div>
+                                <div class="branch-status">
+                                    <span class="status-badge ${statusClass}">${statusText}</span>
+                                    ${lastRun ? `<a href="/run/${lastRun.ts}" class="btn ghost" style="padding: 4px 8px; font-size: 12px;">View</a>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    return `
+                        <div class="project-card">
+                            <div class="project-title">${project.owner_repo}</div>
+                            <div class="project-id">ID: ${project.id}</div>
+                            <div class="branches-list">
+                                ${branchesHtml}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                                <div>
+                                    <small style="color: var(--muted);">
+                                        LLM: ${project.settings.llm} | 
+                                        Journeys: ${project.settings.journey_cap} | 
+                                        Stress: ${project.settings.stress}
+                                    </small>
+                                </div>
+                                <a href="/onboard?project=${encodeURIComponent(project.id)}" class="start-audit-btn">
+                                    Start Audit
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                content.innerHTML = `<div class="projects-grid">${projectsHtml}</div>`;
+                
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+                document.getElementById('projects-content').innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error loading projects</h3>
+                        <p>Please try refreshing the page</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load projects on page load
+        loadProjects();
+        
+        // Refresh every 30 seconds
+        setInterval(loadProjects, 30000);
+    </script>
+</body>
+</html>

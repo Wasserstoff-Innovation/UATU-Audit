@@ -34,7 +34,8 @@ def run_slither(src_dir: Path, out_dir: Path, mode: str = "auto") -> Dict[str, A
             try:
                 mach = platform.machine().lower()
                 if "arm" in mach or "aarch64" in mach:
-                    docker_platform = ["--platform", "linux/arm64"]
+                    # Try to use linux/amd64 with emulation for ARM64 systems
+                    docker_platform = ["--platform", "linux/amd64"]
             except Exception:
                 docker_platform = []
 
@@ -62,6 +63,10 @@ def run_slither(src_dir: Path, out_dir: Path, mode: str = "auto") -> Dict[str, A
                 if ok:
                     return {"ok": True, "mode":"host", "path": str(out_dir / "slither.json")}
                 else:
+                    # Check if it's a platform compatibility issue
+                    stderr = proc.stderr or ""
+                    if "does not provide the specified platform" in stderr or "platform" in stderr.lower():
+                        return _write_stub(out_dir, "Platform compatibility issue; using stub mode")
                     # Even on failure, create a minimal error json to keep pipeline flowing
                     (out_dir / "slither.error.json").write_text(json.dumps({
                         "error":"slither_failed","returncode":proc.returncode,"stderr":proc.stderr

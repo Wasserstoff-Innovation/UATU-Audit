@@ -6,14 +6,32 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 def build_report(outdir: Path) -> None:
     flows = json.loads((outdir / "flows.json").read_text())
     
+    # Copy mascot and logo images to report directory for consistent rendering
+    import shutil
+    mascot_src = Path("auditor/dashboard/static/uatu-mascot.png")
+    if mascot_src.exists():
+        shutil.copy2(mascot_src, outdir / "uatu-mascot.png")
+    logo_src = Path("auditor/dashboard/static/uatu-logo.svg")
+    if logo_src.exists():
+        shutil.copy2(logo_src, outdir / "uatu-logo.svg")
+    
     # Load test results if they exist
     test_runs = []
     test_dir = outdir / "runs" / "tests"
     if test_dir.exists():
         for f in test_dir.glob("*.json"):
             try:
-                test_runs.append(json.loads(f.read_text()))
-            except Exception:
+                data = json.loads(f.read_text())
+                # Ensure the test result has the expected structure
+                if isinstance(data, dict):
+                    # Add default values if missing
+                    data.setdefault("passed", 0)
+                    data.setdefault("failed", 0)
+                    data.setdefault("tests", [])
+                    data.setdefault("gas", {})
+                    test_runs.append(data)
+            except Exception as e:
+                print(f"Warning: Failed to load test result {f}: {e}")
                 pass
     
     env = Environment(
@@ -29,8 +47,12 @@ def build_report(outdir: Path) -> None:
     # Compute gas top data
     gas_rows = []
     for r in test_runs:
-        for tname, g in (r.get("gas") or {}).items():
-            gas_rows.append({"journey": r.get("project"), "test": tname, "gas": int(g)})
+        if isinstance(r, dict) and "gas" in r:
+            for tname, g in (r.get("gas") or {}).items():
+                try:
+                    gas_rows.append({"journey": r.get("project", "unknown"), "test": tname, "gas": int(g)})
+                except (ValueError, TypeError):
+                    pass  # Skip invalid gas values
     gas_top = sorted(gas_rows, key=lambda x: x["gas"], reverse=True)[:10]
 
     # ----- LLM Assertions -----
@@ -187,17 +209,17 @@ def build_report(outdir: Path) -> None:
     eop_rows = []
     for row in candidates:
         proj = f"happy_{row['contract']}_{row['function']}"
-        tr = next((r for r in test_runs if r.get('project') == proj), None)
+        tr = next((r for r in test_runs if isinstance(r, dict) and r.get('project') == proj), None)
         tested = False; status = None
-        if tr:
-            names = [t.get('name','') for t in (tr.get('tests') or [])]
+        if tr and isinstance(tr, dict):
+            names = [t.get('name','') for t in (tr.get('tests') or []) if isinstance(t, dict)]
             # exact eop test name pattern:
             target = f"test_eop_block_{row['function']}"
             matched = [n for n in names if n == target]
             if matched:
                 tested = True
-                stat = next((t for t in tr.get('tests') or [] if t.get('name')==target), {})
-                status = stat.get('status')
+                stat = next((t for t in tr.get('tests') or [] if isinstance(t, dict) and t.get('name')==target), {})
+                status = stat.get('status') if isinstance(stat, dict) else None
         eop_rows.append({**row, 'project': proj, 'tested': tested, 'status': status})
 
     # Load static analysis metadata
@@ -208,10 +230,68 @@ def build_report(outdir: Path) -> None:
             static_meta = json.loads(sm.read_text())
         except Exception: 
             static_meta = {}
+    
+    # Load findings from Slither
+    findings = []
+    slither_norm = outdir / 'runs' / 'static' / 'slither.normalized.json'
+    if slither_norm.exists():
+        try:
+            findings = json.loads(slither_norm.read_text())
+            if not isinstance(findings, list):
+                findings = []
+        except Exception:
+            findings = []
 
     md = env.get_template("report.md.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges, risk_trend=risk_trend)
     html = env.get_template("report.html.j2").render(flows=flows, outdir=str(outdir), load_json=load_json, test_runs=test_runs, gas_top=gas_top, static_meta=static_meta, eop_rows=eop_rows, eop_mode=eop_mode, llm_meta=llm_meta, llm_rows=llm_rows, llm_stats=llm_stats, risk=risk, risk_summary=risk_summary, risk_heatmap=heatmap, stride_badges=stride_badges, risk_trend=risk_trend)
     (outdir / "report.md").write_text(md)
     (outdir / "report.html").write_text(html)
+    
+    # Generate PDF with compact data
+    pdf_env = Environment(
+        loader=FileSystemLoader(str(Path("auditor/templates/pdf"))),
+        autoescape=select_autoescape()
+    )
+    
+    # Prepare PDF data
+    pdf_data = {
+        "title": "Uatu Audit Report",
+        "report_kind": "Smart Contract Security Analysis",
+        "contract_id": flows.get("contracts", [{}])[0].get("name", "Unknown") if flows.get("contracts") else "Unknown",
+        "commit": "N/A",  # Could be extracted from git if available
+        "generated_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "summary": risk_summary or {},
+        "risk_top": heatmap[:10] if heatmap else [],
+        "risk_heatmap": heatmap if heatmap else [],
+        "tests": {
+            "passed": sum(r.get("passed", 0) for r in test_runs if isinstance(r, dict)),
+            "total": sum(r.get("passed", 0) + r.get("failed", 0) for r in test_runs if isinstance(r, dict)),
+            "journeys": len(test_runs)
+        },
+        "eop": {
+            "total": len(eop_rows),
+            "covered": len([r for r in eop_rows if r.get("tested")])
+        },
+        "llm": {
+            "status": "enabled" if llm_meta.get("enabled") else "disabled"
+        },
+        "static": {
+            "status": "ok" if static_meta.get("ok", True) else "failed",
+            "findings": len(findings)
+        },
+        "gas": {
+            "top_fn": gas_top[0].get("test", "-") if gas_top else "-",
+            "top_val": gas_top[0].get("gas", "-") if gas_top else "-"
+        },
+        "findings": findings[:20] if findings else [],  # Limit for PDF
+        "sparkline_data_uri": risk_trend.get("svg_data_uri", "") if risk_trend else "",
+        "versions": {"tool": "UatuAudit v2.0"},
+        "modes": static_meta.get("mode", "Standard"),
+        "year": __import__("datetime").datetime.now().year
+    }
+    
+    pdf_html = pdf_env.get_template("report.html.j2").render(**pdf_data, asset_base=str(outdir))
+    (outdir / "report_pdf.html").write_text(pdf_html)
+    
     # also write report.json placeholder
     (outdir / "report.json").write_text(json.dumps({"summary":"Task 6 with real Slither integration"}, indent=2))

@@ -1,252 +1,242 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Contract Audit Report</title>
+<html><head><meta charset="utf-8"><title>Uatu Audit Report</title>
 <style>
-table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}
-th{background:#f5f5f5}
-.badge{display:inline-block;padding:2px 6px;border-radius:4px;background:#eee;margin-right:4px}
+:root{
+  --ink:#2c3e50; --slate:#34495e; --edge:#7f8c8d; --glow:#f7d046;
+  --paper:#ffffff; --panel:#f8f9fa; --muted:#6c757d;
+  --ok:#28a745; --warn:#ffc107; --accent:#007bff; --danger:#dc3545;
+}
+*{box-sizing:border-box} html,body{height:100%;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:14px/1.4 Inter,system-ui,-apple-system,sans-serif}
+.hero{background:linear-gradient(135deg,var(--slate),var(--edge));padding:40px 20px;text-align:center;border-bottom:1px solid var(--edge)}
+.hero h1{font-size:36px;margin:0 0 8px 0;color:var(--glow);text-shadow:0 0 20px rgba(247,208,70,.3)}
+.hero .subtitle{color:#d7e6f7;font-size:16px;margin:0 0 20px 0}
+.hero .stats{display:flex;justify-content:center;gap:30px;margin:20px 0}
+.stat{text-align:center}
+.stat .value{font-size:24px;font-weight:700;color:var(--glow)}
+.stat .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.container{max-width:1000px;margin:0 auto;padding:20px}
+.section{margin:30px 0}
+.section h2{color:var(--glow);border-bottom:2px solid var(--edge);padding-bottom:8px;margin-bottom:16px}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--edge)}
+th,td{border:1px solid var(--edge);padding:8px;text-align:left}
+th{background:var(--slate);color:var(--glow);font-weight:600}
+tr:nth-child(even){background:rgba(31,59,87,0.2)}
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;margin-right:4px}
+.grade-critical{background:#ffcccc;color:#8b0000}
+.grade-high{background:#ffd6cc;color:#cc4400}
+.grade-medium{background:#fff0cc;color:#cc8800}
+.grade-low{background:#f2ffcc;color:#448800}
+.grade-info{background:#e6ffe6;color:#006600}
+.delta-up{color:var(--danger)}
+.delta-down{color:var(--ok)}
+.compact{font-size:12px}
+.compact th, .compact td{padding:4px 6px}
+@media print{
+  .hero{background:#f8f9fa;color:#333}
+  .hero h1{color:#2c3e50}
+  body{background:white;color:#333}
+  .section h2{color:#2c3e50;border-color:#ddd}
+  table{background:white;border-color:#ddd}
+  th{background:#f5f5f5;color:#2c3e50}
+}
 </style>
 </head>
 <body>
-  <h1>Contract Audit Report</h1>
-  <p><strong>Static Analysis:</strong> {{ static_meta.mode or 'unknown' }}{% if static_meta.ok is defined %} (ok: {{ static_meta.ok }}){% endif %}</p>
+  <div class="hero">
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;">
+              <img src="{{ outdir }}/uatu-logo.svg" alt="Uatu Logo" style="width:120px;height:auto;">
+      <h1>Uatu Audit Report</h1>
+    </div>
+    <p class="subtitle">Smart Contract Security Analysis</p>
+    <div style="margin:20px 0;">
+      <img src="{{ outdir }}/uatu-mascot.png" alt="Uatu Mascot" style="width:120px;height:auto;opacity:0.8;" onerror="this.style.display='none'">
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="value">{{ risk_summary.overall|default(0)|round(1) }}</div>
+        <div class="label">Risk Score</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ risk_summary.grade|default('N/A') }}</div>
+        <div class="label">Grade</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ flows.contracts|length }}</div>
+        <div class="label">Contracts</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ test_runs|length }}</div>
+        <div class="label">Test Journeys</div>
+      </div>
+    </div>
+  </div>
 
-  <h2>Contracts & Functions</h2>
-  {% for c in flows.contracts %}
-    <h3>{{ c.name }}</h3>
-    <p><strong>Events:</strong>
-      {% for e in c.events %}{{ e.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-    </p>
-    <ul>
-      {% for f in c.functions %}
-        <li><strong>{{ f.name }}</strong> — visibility: {{ f.visibility or "n/a" }}, mutability: {{ f.mutability or "n/a" }}
-          <br/>inputs:
-          {% for i in f.inputs %}{{ i.type }} {{ i.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% endfor %}
+  <div class="container">
+    <div class="section">
+      <h2>Executive Summary</h2>
+      <p><strong>Analysis Mode:</strong> {{ static_meta.mode or 'unknown' }}{% if static_meta.ok is defined %} ({{ 'success' if static_meta.ok else 'failed' }}){% endif %}</p>
+      {% if risk_summary and risk_summary.delta_overall %}
+        <p><strong>Risk Trend:</strong> 
+          {% set d = risk_summary.delta_overall %}
+          {% if d > 0 %}
+            <span class="delta-up">+{{ "%.1f"|format(d) }} ↑ (worse)</span>
+          {% elif d < 0 %}
+            <span class="delta-down">{{ "%.1f"|format(d) }} ↓ (better)</span>
+          {% else %}
+            <span>0.0 (stable)</span>
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
 
-  {% set slither_norm = outdir + '/runs/static/slither.normalized.json' %}
-  {% set threats_json = outdir + '/threats.json' %}
-
-  <h2>Findings (Slither)</h2>
-  {% set findings = [] %}
-  {% if slither_norm %}
-    {% set _ignore = findings.extend(load_json(slither_norm)) %}
-  {% endif %}
-  {% if findings|length == 0 %}
-    <p>No normalized findings (either none detected or Slither failed).</p>
-  {% else %}
-    <table>
-      <tr><th>Severity</th><th>Check</th><th>Contract.Function</th><th>Location</th></tr>
-      {% for f in findings %}
+    <div class="section">
+      <h2>Contract Inventory</h2>
+      <table class="compact">
+        <tr><th>Contract</th><th>Functions</th><th>Events</th><th>Standards</th></tr>
+        {% for c in flows.contracts %}
         <tr>
-          <td>{{ f.severity }}</td>
-          <td>{{ f.title }}</td>
-          <td>{{ (f.contract or '-') ~ '.' ~ (f.function or '-') }}</td>
-          <td>{{ f.location or '-' }}</td>
+          <td><strong>{{ c.name }}</strong></td>
+          <td>{{ c.functions|length }}</td>
+          <td>{{ c.events|length }}</td>
+          <td>
+            {% for std in flows.standards %}
+              {% if std in c.name or std in (c.inherits or []) %}
+                <span class="badge grade-info">{{ std }}</span>
+              {% endif %}
+            {% endfor %}
+          </td>
         </tr>
-      {% endfor %}
-    </table>
-  {% endif %}
-
-  <h2>STRIDE Coverage</h2>
-  {% set threats = {} %}
-  {% if threats_json %}
-    {% set threats = load_json(threats_json) %}
-  {% endif %}
-  {% if threats.by_function %}
-    <table>
-      <tr>
-        <th>Function</th>
-        <th>Spoofing</th>
-        <th>Tampering</th>
-        <th>Repudiation</th>
-        <th>Info Disclosure</th>
-        <th>DoS</th>
-        <th>EoP</th>
-      </tr>
-      {% for fn, cats in threats.by_function.items() %}
-      <tr>
-        <td>{{ fn }}</td>
-        <td>{{ cats.spoofing|length }}</td>
-        <td>{{ cats.tampering|length }}</td>
-        <td>{{ cats.repudiation|length }}</td>
-        <td>{{ cats.information_disclosure|length }}</td>
-        <td>{{ cats.denial_of_service|length }}</td>
-        <td>{{ cats.elevation_of_privilege|length }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  {% else %}
-    <p>No STRIDE entries found.</p>
-  {% endif %}
-
-  <h2>Test Results</h2>
-  {% if test_runs|length == 0 %}
-    <p>No test runs found.</p>
-  {% else %}
-    <table>
-      <tr><th>Journey</th><th>Passed</th><th>Failed</th></tr>
-      {% for r in test_runs %}
-        <tr><td>{{ r.project }}</td><td>{{ r.passed }}</td><td>{{ r.failed }}</td></tr>
-      {% endfor %}
-    </table>
-  {% endif %}
-
-  <h2>Top Gas</h2>
-  {% if gas_top|length == 0 %}
-    <p>No gas data captured.</p>
-  {% else %}
-    <table>
-      <tr><th>#</th><th>Journey</th><th>Test</th><th>Gas</th></tr>
-      {% for row in gas_top %}
-        <tr><td>{{ loop.index }}</td><td>{{ row.journey }}</td><td>{{ row.test }}</td><td>{{ row.gas }}</td></tr>
-      {% endfor %}
-    </table>
-  {% endif %}
-
-  <h2>EoP Coverage</h2>
-  <p>Mode: <code>{{ eop_mode }}</code></p>
-  {% if eop_rows|length == 0 %}
-    <p>No EoP candidates in this run.</p>
-  {% else %}
-    <table>
-      <tr><th>Contract</th><th>Function</th><th>Gating</th><th>Journey</th><th>Tested</th><th>Status</th></tr>
-      {% for r in eop_rows %}
-        <tr>
-          <td>{{ r.contract }}</td>
-          <td>{{ r.function }}</td>
-          <td>{{ r.gating }}</td>
-          <td>{{ r.project }}</td>
-          <td>{{ 'yes' if r.tested else 'no' }}</td>
-          <td>{% if r.status %}{{ r.status }}{% else %}-{% endif %}</td>
-        </tr>
-      {% endfor %}
-    </table>
-  {% endif %}
-
-  <h2>LLM Assertions</h2>
-  <p><b>Summary:</b> added {{ llm_stats.added }}, skipped {{ llm_stats.skipped }}, error {{ llm_stats.error }}.</p>
-  {% if not llm_meta.enabled %}
-    <p>LLM disabled (reason: {{ llm_meta.reason or 'off' }}).</p>
-  {% else %}
-    <p>Provider: <code>{{ llm_meta.provider }}</code> &nbsp; Model: <code>{{ llm_meta.model }}</code></p>
-    {% if llm_rows|length == 0 %}
-      <p>No LLM artifacts found.</p>
-    {% else %}
-      <table>
-        <tr><th>Artifact</th><th>Status</th><th>Provider</th><th>Model</th><th>Error</th></tr>
-        {% for r in llm_rows %}
-          <tr>
-            <td>{{ r.artifact }}</td>
-            <td>{{ r.reason or 'ok' }}</td>
-            <td>{{ r.provider or '-' }}</td>
-            <td>{{ r.model or '-' }}</td>
-            <td>{% if r.error %}{{ r.error }}{% else %}-{% endif %}</td>
-          </tr>
         {% endfor %}
       </table>
+    </div>
+
+    {% set slither_norm = outdir + '/runs/static/slither.normalized.json' %}
+    {% set findings = [] %}
+    {% if slither_norm %}
+      {% set _ignore = findings.extend(load_json(slither_norm)) %}
     {% endif %}
-  {% endif %}
+    
+    <div class="section">
+      <h2>Security Findings</h2>
+      {% if findings|length == 0 %}
+        <p>✅ No security findings detected by Slither.</p>
+      {% else %}
+        <table class="compact">
+          <tr><th>Severity</th><th>Issue</th><th>Location</th></tr>
+          {% for f in findings[:10] %}
+            <tr>
+              <td><span class="badge grade-{{ f.severity|lower }}">{{ f.severity }}</span></td>
+              <td>{{ f.title }}</td>
+              <td>{{ (f.contract or '-') ~ '.' ~ (f.function or '-') }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+        {% if findings|length > 10 %}
+          <p><em>... and {{ findings|length - 10 }} more findings. See full report for details.</em></p>
+        {% endif %}
+      {% endif %}
+    </div>
 
-<h2>Risk Overview</h2>
-{% set overall = risk_summary.overall if risk_summary else 0 %}
-{% set d = risk_summary.delta_overall if risk_summary and 'delta_overall' in risk_summary else 0 %}
-<p>
-  <b>Overall:</b> {{ "%.1f"|format(overall) }}
-  {% if d != 0 %}
-    {% if d > 0 %}
-      <span style="color:#c0392b;">(+{{"%.1f"|format(d)}} ↑ worse)</span>
-    {% else %}
-      <span style="color:#2e7d32;">({{"%.1f"|format(d)}} ↓ better)</span>
+    {% set threats_json = outdir + '/threats.json' %}
+    {% set threats = {} %}
+    {% if threats_json %}
+      {% set threats = load_json(threats_json) %}
     {% endif %}
-  {% endif %}
-  &nbsp;&nbsp;<b>Grade:</b> {{ risk_summary.grade if risk_summary else "N/A" }}
-</p>
+    
+    <div class="section">
+      <h2>Test Results</h2>
+      {% if test_runs|length == 0 %}
+        <p>No test journeys executed.</p>
+      {% else %}
+        <table class="compact">
+          <tr><th>Journey</th><th>Status</th><th>Tests</th><th>Gas (avg)</th></tr>
+          {% for r in test_runs %}
+            {% set total_tests = r.passed + r.failed %}
+            {% set avg_gas = (r.gas.values()|list|sum / r.gas|length)|round if r.gas else 0 %}
+            <tr>
+              <td>{{ r.project }}</td>
+              <td>
+                {% if r.failed == 0 %}
+                  <span class="badge grade-info">✅ PASS</span>
+                {% elif r.passed == 0 %}
+                  <span class="badge grade-critical">❌ FAIL</span>
+                {% else %}
+                  <span class="badge grade-warn">⚠️ PARTIAL</span>
+                {% endif %}
+              </td>
+              <td>{{ r.passed }}/{{ total_tests }}</td>
+              <td>{{ avg_gas if avg_gas > 0 else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    </div>
 
-{% if risk_summary and risk_summary.buckets %}
-<p><b>Risk Profile:</b>
-  {% for grade, count in risk_summary.buckets.items() %}
-    {% if count > 0 %}
-      <span style="display:inline-block;padding:2px 6px;border-radius:10px;margin-right:4px;background:
-        {% if grade == 'Critical' %}#ffcccc
-        {% elif grade == 'High' %}#ffd6cc
-        {% elif grade == 'Medium' %}#fff0cc
-        {% elif grade == 'Low' %}#f2ffcc
-        {% else %}#e6ffe6{% endif %};">
-        {{ grade }}: {{ count }}
-      </span>
+    <div class="section">
+      <h2>Risk Analysis</h2>
+      {% if risk_summary and risk_summary.buckets %}
+        <p><strong>Risk Distribution:</strong>
+          {% for grade, count in risk_summary.buckets.items() %}
+            {% if count > 0 %}
+              <span class="badge grade-{{ grade|lower }}">{{ grade }}: {{ count }}</span>
+            {% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
+      
+      {% if risk_heatmap and risk_heatmap|length > 0 %}
+        <h3>Top Risk Functions</h3>
+        <table class="compact">
+          <tr><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th><th>STRIDE</th></tr>
+          {% for row in risk_heatmap[:10] %}
+            <tr>
+              <td>{{ row.contract }}.{{ row.function }}</td>
+              <td>{{ "%.1f"|format(row.score) }}</td>
+              <td>
+                {% set delta = row.delta if row and 'delta' in row else 0 %}
+                {% if delta>0 %}<span class="delta-up">+{{"%.1f"|format(delta)}} ↑</span>
+                {% elif delta<0 %}<span class="delta-down">{{"%.1f"|format(delta)}} ↓</span>
+                {% else %}<span>0.0</span>{% endif %}
+              </td>
+              <td><span class="badge grade-{{ row.grade|lower }}">{{ row.grade }}</span></td>
+              <td>
+                {% for c in row.cats[:2] %}
+                  <span class="badge" style="background:{{ stride_badges.get(c, '#eee') }};">{{ c[:3] }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    </div>
+
+    {% if risk_trend and risk_trend.svg_data_uri %}
+    <div class="section">
+      <h2>Risk Trend</h2>
+      <p><strong>Last {{ risk_trend.meta.count }} runs:</strong>
+        <img src="{{ risk_trend.svg_data_uri }}" alt="risk trend" style="vertical-align: middle; margin-left: 8px;" />
+        <br/>
+        <small style="color: var(--muted);">
+          Latest: <b>{{ "%.1f"|format(risk_trend.meta.latest) }}</b> • 
+          Min: <b>{{ "%.1f"|format(risk_trend.meta.min) }}</b> • 
+          Max: <b>{{ "%.1f"|format(risk_trend.meta.max) }}</b>
+        </small>
+      </p>
+    </div>
     {% endif %}
-  {% endfor %}
-</p>
-{% endif %}
 
-{% if risk_trend and risk_trend.svg_data_uri %}
-<p><b>Risk Trend (last {{ risk_trend.meta.count }} runs):</b>
-  <img src="{{ risk_trend.svg_data_uri }}" alt="risk trend" style="vertical-align: middle; margin-left: 8px;" />
-  <br/>
-  <small style="color: #666;">
-    Latest: <b>{{ "%.1f"|format(risk_trend.meta.latest) }}</b> • 
-    Min: <b>{{ "%.1f"|format(risk_trend.meta.min) }}</b> • 
-    Max: <b>{{ "%.1f"|format(risk_trend.meta.max) }}</b>
-  </small>
-</p>
-{% endif %}
+    <div class="section">
+      <h2>Analysis Summary</h2>
+      <p><strong>LLM Usage:</strong> 
+        {% if llm_meta.enabled %}
+          {{ llm_meta.provider }} ({{ llm_meta.model }}) - {{ llm_stats.added }} assertions added
+        {% else %}
+          Disabled ({{ llm_meta.reason or 'off' }})
+        {% endif %}
+      </p>
+      <p><strong>EoP Testing:</strong> {{ eop_mode }} mode - {{ eop_rows|selectattr('tested')|list|length }}/{{ eop_rows|length }} functions tested</p>
+    </div>
 
-{% if risk and risk.summary.top_functions %}
-<h3>Top 10 Risky Functions</h3>
-<table border="1" cellpadding="6" cellspacing="0">
-  <tr><th>#</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th></tr>
-  {% for item in risk.summary.top_functions %}
-    {% set row = risk.by_function[item.key] if risk and risk.by_function and item.key in risk.by_function else None %}
-    {% set delta = row.delta if row and 'delta' in row else 0 %}
-    <tr>
-      <td>{{ loop.index }}</td>
-      <td>{{ item.key }}</td>
-      <td>{{ "%.1f"|format(item.score) }}</td>
-      <td>
-        {% if delta>0 %}<span style="color:#c0392b;">+{{"%.1f"|format(delta)}} ↑</span>
-        {% elif delta<0 %}<span style="color:#2e7d32;">{{"%.1f"|format(delta)}} ↓</span>
-        {% else %}<span>0.0</span>{% endif %}
-      </td>
-      <td>{{ item.grade }}</td>
-    </tr>
-  {% endfor %}
-</table>
-{% endif %}
-
-<h2>Risk Heatmap</h2>
-{% if risk_heatmap and risk_heatmap|length > 0 %}
-<table border="1" cellpadding="6" cellspacing="0">
-  <tr><th>Contract</th><th>Function</th><th>Score</th><th>Δ</th><th>Grade</th><th>STRIDE</th></tr>
-  {% for row in risk_heatmap %}
-    {% set bg = '#e6ffe6' %}
-    {% if row.score >= 90 %}{% set bg = '#ffcccc' %}
-    {% elif row.score >= 75 %}{% set bg = '#ffd6cc' %}
-    {% elif row.score >= 50 %}{% set bg = '#fff0cc' %}
-    {% elif row.score >= 25 %}{% set bg = '#f2ffcc' %}{% endif %}
-    <tr style="background: {{ bg }};">
-      <td>{{ row.contract }}</td>
-      <td>{{ row.function }}</td>
-      <td>{{ "%.1f"|format(row.score) }}</td>
-          <td>
-      {% set delta = row.delta if row and 'delta' in row else 0 %}
-      {% if delta>0 %}<span style="color:#c0392b;">+{{"%.1f"|format(delta)}} ↑</span>
-      {% elif delta<0 %}<span style="color:#2e7d32;">{{"%.1f"|format(delta)}} ↓</span>
-      {% else %}<span>0.0</span>{% endif %}
-    </td>
-      <td>{{ row.grade }}</td>
-      <td>
-        {% for c in row.cats %}
-          <span style="display:inline-block;padding:2px 6px;border-radius:10px;margin-right:4px;background:{{ stride_badges.get(c, '#eee') }};">{{ c }}</span>
-        {% endfor %}
-      </td>
-    </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p>No risk data available.</p>
-{% endif %}
-
+  </div>
 </body></html>

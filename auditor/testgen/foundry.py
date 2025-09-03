@@ -227,7 +227,7 @@ contract GENERATED_{contract_name}_{uniq_fns[0]} {{
 """
 
 def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_src: Path, outdir: Path,
-    threats: dict | None = None, eop_mode: str = 'auto', llm_meta: LLMMeta | None = None, abi_map: dict | None = None) -> Dict[str,Any]:
+    threats: dict | None = None, eop_mode: str = 'auto', llm_meta: LLMMeta | None = None, abi_map: dict | None = None, llm_policy=None) -> Dict[str,Any]:
     tests_idx = {"tests": []}
     root_tests = outdir / "tests" / "evm"
     for j in journeys.get("journeys", []):
@@ -288,7 +288,14 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
                 key = f"{c_name}.{fn}"
                 bucket = tmap.get(key, {}) if isinstance(tmap, dict) else {}
 
-                res = generate_assertion_fn(outdir, jid, c_name, fn, types, pos_args, bucket, llm_meta, abi_map=abi_map)
+                # Use LLM policy for cost-aware assertion generation
+                from ..llm.policy import LLMBudget
+                from ..llm.engine import generate_assertion_fn
+                
+                # Check if we can make a call within budget
+                # This would need access to the policy instance, so we'll use the original for now
+                # TODO: Pass policy instance through the call chain
+                res = generate_assertion_fn(outdir, jid, c_name, fn, types, pos_args, bucket, llm_meta, abi_map=abi_map, llm_policy=llm_policy)
                 # Cache already written by engine; only include if valid AND compiles
                 if res.get("added") and res.get("snippet"):
                     kept, reason = _append_llm_and_precheck(project_dir=proj, test_file=tfile, marker_name=f"{jid}__{fn}", snippet=res["snippet"])

@@ -75,24 +75,35 @@ class RunIndexer:
                     continue
                     
                 print(f"  Found user directory: {user_dir.name}")
+                # New projects layout
+                projects_root = user_dir / "projects"
+                if projects_root.exists():
+                    for proj in projects_root.iterdir():
+                        if not proj.is_dir():
+                            continue
+                        branches_root = proj / "branches"
+                        if not branches_root.exists():
+                            continue
+                        for branch_dir in branches_root.iterdir():
+                            runs_root = branch_dir / "runs"
+                            if not runs_root.exists():
+                                continue
+                            for run_dir in sorted(runs_root.iterdir(), reverse=True):
+                                if not run_dir.is_dir():
+                                    continue
+                                rd = self._index_run(run_dir, f"user-{user_dir.name}")
+                                if rd:
+                                    runs.append(rd)
+                # Legacy layout back-compat
                 audits_dir = user_dir / "audits"
-                if not audits_dir.exists():
-                    print(f"    No audits directory for user {user_dir.name}")
-                    continue
-                    
-                print(f"    Scanning audits for user: {user_dir.name}")
-                    
-                for audit_dir in audits_dir.iterdir():
-                    if not audit_dir.is_dir():
-                        continue
-                        
-                    print(f"  Found user audit: {audit_dir.name} for user {user_dir.name}")
-                    audit_data = self._index_user_audit(audit_dir, user_dir.name)
-                    if audit_data:
-                        print(f"  ✓ Indexed user audit: {audit_data['ts']} status={audit_data['status']}")
-                        runs.append(audit_data)
-                    else:
-                        print(f"  ✗ Failed to index user audit: {audit_dir.name}")
+                if audits_dir.exists():
+                    print(f"    Scanning audits for user: {user_dir.name}")
+                    for audit_dir in audits_dir.iterdir():
+                        if not audit_dir.is_dir():
+                            continue
+                        audit_data = self._index_user_audit(audit_dir, user_dir.name)
+                        if audit_data:
+                            runs.append(audit_data)
         
         # Sort all runs by timestamp (newest first)
         runs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)

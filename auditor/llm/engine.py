@@ -105,10 +105,49 @@ Constraints for using events & reverts:
 
 def generate_assertion_fn(outdir: Path, journey_id: str, contract_name: str, fn_name: str,
                           input_types: list[str], default_args: list[str], threats_for_fn: dict,
-                          provider_meta: LLMMeta, abi_map: dict | None = None) -> dict:
+                          provider_meta: LLMMeta, abi_map: dict | None = None, llm_policy=None) -> dict:
     # guard
     if not provider_meta.enabled:
         return {"added": False, "reason": provider_meta.reason or "disabled", "provider": provider_meta.provider, "model": provider_meta.model}
+    
+    # Use LLM policy if available
+    if llm_policy:
+        from .policy import LLMBudget
+        prompt = make_prompt(contract_name, fn_name, input_types, default_args, threats_for_fn, abi_map)
+        
+        result = llm_policy.make_call(
+            budget=LLMBudget.MINI,
+            prompt_template_id="assertion_augment",
+            repo_commit_sha="unknown",  # Could be extracted from git
+            contract_name=contract_name,
+            scope=f"{journey_id}_{fn_name}",
+            prompt=prompt,
+            provider_meta=provider_meta
+        )
+        
+        if result.get("success"):
+            response = result.get("output", "")
+            # minimal sanity: must contain `function test_llm_...(` and a closing brace.
+            ok = ("function test_llm_" in response) and ("{" in response) and ("}" in response)
+            return {
+                "added": ok, 
+                "reason": "ok" if ok else "invalid_snippet", 
+                "provider": provider_meta.provider, 
+                "model": provider_meta.model, 
+                "snippet": response,
+                "cached": result.get("cached", False),
+                "tokens": result.get("tokens", 0)
+            }
+        else:
+            return {
+                "added": False, 
+                "reason": result.get("reason", "failed"), 
+                "provider": provider_meta.provider, 
+                "model": provider_meta.model,
+                "error": result.get("error")
+            }
+    
+    # Fallback to original implementation
     prompt = make_prompt(contract_name, fn_name, input_types, default_args, threats_for_fn, abi_map)
     pp, rp, mp = _cache_paths(outdir, journey_id, fn_name)
     try:
