@@ -252,8 +252,13 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
         if not cfile:
             (proj / "SKIPPED.txt").write_text(f"Contract file for {c_name} not found.")
             continue
-        rel = Path("..") / "src" / cfile.relative_to(src)
-        code = _make_test_code(str(rel).replace("\\", "/"), c_name, steps, flows, threats, eop_mode, llm_meta, jid, abi_map)
+        # Use OpenZeppelin remapping for standard contracts, otherwise relative path
+        if c_name in ["Ownable", "AccessControl", "ERC20", "ERC721", "ERC1155"]:
+            import_path = f"@openzeppelin/contracts/access/{c_name}.sol" if c_name in ["Ownable", "AccessControl"] else f"@openzeppelin/contracts/token/ERC{c_name[3:]}/{c_name}.sol"
+        else:
+            rel = Path("..") / "src" / cfile.relative_to(src)
+            import_path = str(rel).replace("\\", "/")
+        code = _make_test_code(import_path, c_name, steps, flows, threats, eop_mode, llm_meta, jid, abi_map)
         tname = _test_contract_name(jid)
         tfile = test / f"{tname}.t.sol"
         tfile.write_text(code)
@@ -311,8 +316,16 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
                     except Exception:
                         pass
         
-        # minimal foundry.toml
-        (proj / "foundry.toml").write_text("[profile.default]\nsrc = 'src'\ntest = 'test'\n")
+        # foundry.toml with comprehensive remappings for OpenZeppelin
+        foundry_config = """[profile.default]
+src = 'src'
+test = 'test'
+
+[profile.default.remappings]
+@openzeppelin/contracts/=src/.deps/npm/@openzeppelin/contracts/
+@openzeppelin/contracts-upgradeable/=src/.deps/npm/@openzeppelin/contracts/
+"""
+        (proj / "foundry.toml").write_text(foundry_config)
         tests_idx["tests"].append({
             "id": f"{jid}_generated",
             "journey_id": jid,

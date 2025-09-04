@@ -876,22 +876,17 @@ async def setup_project(request: Request):
             'created_at': datetime.utcnow().isoformat()
         }
         
-        # Start background process
-        async def audit_workflow():
+
+        # Start background task using asyncio
+        async def _runner():
             try:
-                # Update status to cloning
-                print(f"Starting audit workflow for {audit_id}")
-                
-                # Clone repository
+                # Clone repository first
                 clone_success = await clone_repository(repo_url, branch_name, repo_clone_path, github_token)
                 
                 if clone_success:
                     print(f"Clone successful for {audit_id}, starting audit process")
                     # Run audit process
-                    audit_result = await run_audit_process(repo_clone_path, audit_id, user_login)
-                    
-                    # Update session with completed audit
-                    # Note: In production, you'd want to store this in a database
+                    await run_audit_process(repo_clone_path, audit_id, user_login, repo_name=repo_name, branch_name=branch_name)
                     print(f"Audit workflow completed for {audit_id}")
                 else:
                     print(f"Clone failed for {audit_id}")
@@ -900,10 +895,13 @@ async def setup_project(request: Request):
             except Exception as e:
                 print(f"Audit workflow failed for {audit_id}: {e}")
         
-        # Start background task using asyncio
-        async def _runner():
-            await run_audit_process(repo_clone_path, audit_id, user_login, repo_name=repo_name, branch_name=branch_name)
-        asyncio.create_task(_runner())
+        # Create and store the task to prevent garbage collection
+        task = asyncio.create_task(_runner())
+        # Store task reference to prevent garbage collection
+        if not hasattr(setup_project, '_background_tasks'):
+            setup_project._background_tasks = set()
+        setup_project._background_tasks.add(task)
+        task.add_done_callback(setup_project._background_tasks.discard)
         
         print(f"Queued audit for {user_login}: {repo_name}@{branch_name} (ID: {audit_id})")
         
@@ -954,21 +952,37 @@ async def api_list_user_audits(request: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
     
     user_workspace = get_user_workspace(user.get('login', 'demo-user'))
-    audits_dir = user_workspace / "audits"
+    projects_dir = user_workspace / "projects"
     
     audits = []
-    if audits_dir.exists():
+    if projects_dir.exists():
         import json
-        for audit_folder in audits_dir.iterdir():
-            if audit_folder.is_dir():
-                metadata_file = audit_folder / f"{audit_folder.name}_metadata.json"
-                if metadata_file.exists():
-                    try:
-                        with open(metadata_file, 'r') as f:
-                            audit_data = json.load(f)
-                            audits.append(audit_data)
-                    except Exception as e:
-                        print(f"Error loading audit metadata: {e}")
+        from datetime import datetime
+        
+        # Scan all projects and their branches for runs
+        for project_dir in projects_dir.iterdir():
+            if project_dir.is_dir():
+                branches_dir = project_dir / "branches"
+                if branches_dir.exists():
+                    for branch_dir in branches_dir.iterdir():
+                        if branch_dir.is_dir():
+                            runs_dir = branch_dir / "runs"
+                            if runs_dir.exists():
+                                for run_dir in runs_dir.iterdir():
+                                    if run_dir.is_dir():
+                                        # Look for status.json or metadata
+                                        status_file = run_dir / "status.json"
+                                        if status_file.exists():
+                                            try:
+                                                with open(status_file, 'r') as f:
+                                                    audit_data = json.load(f)
+                                                    # Add project info
+                                                    audit_data['repo_name'] = project_dir.name.replace('~', '/')
+                                                    audit_data['branch'] = branch_dir.name
+                                                    audit_data['ts'] = run_dir.name
+                                                    audits.append(audit_data)
+                                            except Exception as e:
+                                                print(f"Error loading audit metadata: {e}")
     
     return {"audits": sorted(audits, key=lambda x: x.get('created_at', ''), reverse=True)}
 
