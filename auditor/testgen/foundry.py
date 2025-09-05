@@ -131,7 +131,7 @@ contract Attacker {
 }
 ''';
 
-def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any], threats: dict | None, eop_mode: str, llm_meta: LLMMeta | None, journey_id: str, abi_map: dict | None) -> str:
+def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict[str, Any]], flows: Dict[str,Any], threats: dict | None, eop_mode: str, llm_meta: LLMMeta | None, journey_id: str, abi_map: dict | None, is_standard_contract: bool = False) -> str:
     # collect unique function names used in the journey
     uniq_fns = []
     for st in steps:
@@ -208,9 +208,13 @@ def _make_test_code(contract_file_rel: str, contract_name: str, steps: List[Dict
 
     # LLM functions are now appended post-write with compile precheck
 
+    # For standard OpenZeppelin contracts, import from @openzeppelin directly
+    # For custom contracts, use relative path to src_repo
+    import_stmt = f'import "{contract_file_rel}";' if not is_standard_contract else f'import "{contract_file_rel}";'
+    
     return f"""// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-import "{contract_file_rel}";
+{import_stmt}
 {ATTACKER_SNIPPET}
 
 contract GENERATED_{contract_name}_{uniq_fns[0]} {{
@@ -230,35 +234,49 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
     threats: dict | None = None, eop_mode: str = 'auto', llm_meta: LLMMeta | None = None, abi_map: dict | None = None, llm_policy=None) -> Dict[str,Any]:
     tests_idx = {"tests": []}
     root_tests = outdir / "tests" / "evm"
+    
+    # Create shared source directory ONCE instead of copying for each test
+    shared_src = root_tests / "shared_source"
+    if work_src.exists() and not shared_src.exists():
+        shared_src.mkdir(parents=True, exist_ok=True)
+        def _ignore(dir, names):
+            ignore = {'.git', '.hg', '.svn', '.idea', '.vscode', 'node_modules', 'target', 'build', 'dist'}
+            return [n for n in names if n in ignore]
+        shutil.copytree(work_src, shared_src, dirs_exist_ok=True, ignore=_ignore)
+        print(f"Created shared source directory at: {shared_src}")
+    
     for j in journeys.get("journeys", []):
         jid = j["id"]
         steps = j.get("steps", [])
         if not steps:
             continue
         c_name = steps[0]["contract"]
+        
+        # Create lightweight test project - only test directory, no source copy
         proj = root_tests / jid
-        src = proj / "src"
         test = proj / "test"
-        src.mkdir(parents=True, exist_ok=True)
         test.mkdir(parents=True, exist_ok=True)
-        # copy all sources from work/src into project src, excluding VCS/build dirs
-        if work_src.exists():
-            def _ignore(dir, names):
-                ignore = {'.git', '.hg', '.svn', '.idea', '.vscode', 'node_modules', 'target', 'build', 'dist'}
-                return [n for n in names if n in ignore]
-            shutil.copytree(work_src, src, dirs_exist_ok=True, ignore=_ignore)
-        # find defining file for import path
-        cfile = _find_contract_file(src, c_name)
-        if not cfile:
-            (proj / "SKIPPED.txt").write_text(f"Contract file for {c_name} not found.")
-            continue
-        # Use OpenZeppelin remapping for standard contracts, otherwise relative path
-        if c_name in ["Ownable", "AccessControl", "ERC20", "ERC721", "ERC1155"]:
-            import_path = f"@openzeppelin/contracts/access/{c_name}.sol" if c_name in ["Ownable", "AccessControl"] else f"@openzeppelin/contracts/token/ERC{c_name[3:]}/{c_name}.sol"
+        
+        # No src directory needed - using remappings to shared source
+        # No src_repo copy - using shared_source instead
+        # Use OpenZeppelin remapping for standard contracts, otherwise look in shared source
+        is_standard = c_name in ["Ownable", "AccessControl", "ERC20", "ERC721", "ERC1155"]
+        if is_standard:
+            if c_name in ["Ownable", "AccessControl"]:
+                import_path = f"@openzeppelin/contracts/access/{c_name}.sol"
+            else:
+                # ERC20, ERC721, ERC1155
+                import_path = f"@openzeppelin/contracts/token/ERC{c_name[3:]}/{c_name}.sol"
         else:
-            rel = Path("..") / "src" / cfile.relative_to(src)
-            import_path = str(rel).replace("\\", "/")
-        code = _make_test_code(import_path, c_name, steps, flows, threats, eop_mode, llm_meta, jid, abi_map)
+            # find defining file for custom contracts in shared source
+            cfile = _find_contract_file(shared_src, c_name)
+            if not cfile:
+                (proj / "SKIPPED.txt").write_text(f"Contract file for {c_name} not found in shared source.")
+                continue
+            # Use remapping to shared source instead of relative path
+            rel_path = cfile.relative_to(shared_src)
+            import_path = f"@shared/{rel_path}".replace("\\", "/")
+        code = _make_test_code(import_path, c_name, steps, flows, threats, eop_mode, llm_meta, jid, abi_map, is_standard)
         tname = _test_contract_name(jid)
         tfile = test / f"{tname}.t.sol"
         tfile.write_text(code)
@@ -316,14 +334,18 @@ def generate_foundry_tests(flows: Dict[str,Any], journeys: Dict[str,Any], work_s
                     except Exception:
                         pass
         
-        # foundry.toml with comprehensive remappings for OpenZeppelin
-        foundry_config = """[profile.default]
-src = 'src'
+        # foundry.toml with comprehensive remappings for OpenZeppelin and shared source
+        # Calculate relative path from this project to shared source
+        shared_rel = Path("..") / "shared_source"
+        foundry_config = f"""[profile.default]
 test = 'test'
-
-[profile.default.remappings]
-@openzeppelin/contracts/=src/.deps/npm/@openzeppelin/contracts/
-@openzeppelin/contracts-upgradeable/=src/.deps/npm/@openzeppelin/contracts/
+libs = ['lib']
+remappings = [
+    '@openzeppelin/=lib/openzeppelin-contracts/',
+    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
+    '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/',
+    '@shared/={shared_rel}/'
+]
 """
         (proj / "foundry.toml").write_text(foundry_config)
         tests_idx["tests"].append({

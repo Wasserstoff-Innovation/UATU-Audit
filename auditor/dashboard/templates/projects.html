@@ -139,15 +139,23 @@
             <a href="/onboard" class="btn primary">Start New Audit</a>
         </div>
 
+        <!-- Processing banner for new audits -->
+        <div id="processingBanner" style="display: none; background: linear-gradient(90deg, rgba(76, 227, 184, 0.1) 0%, rgba(76, 227, 184, 0.05) 100%); border: 1px solid #4CE3B8; border-radius: 12px; padding: 16px; margin-bottom: 20px; align-items: center; gap: 12px;">
+            <div style="width: 20px; height: 20px; border: 3px solid rgba(76, 227, 184, 0.3); border-top-color: #4CE3B8; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div style="color: #e9eef3; font-size: 14px;">Setting up new audit... The project will appear here once processing begins.</div>
+        </div>
+
         <div id="projects-content">
             <div class="loading">Loading projects...</div>
         </div>
     </div>
 
     <script>
-        async function loadProjects() {
+        async function loadProjects(quick = false) {
             try {
-                const response = await fetch('/api/projects');
+                // Use quick mode for faster initial loading
+                const url = quick ? '/api/projects?quick=true' : '/api/projects';
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 const content = document.getElementById('projects-content');
@@ -244,11 +252,108 @@
             }
         }
         
-        // Load projects on page load
-        loadProjects();
+        // Add CSS animation for spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
         
-        // Refresh every 30 seconds
-        setInterval(loadProjects, 30000);
+        // Smart polling function
+        async function checkQuickStatus() {
+            try {
+                const response = await fetch('/api/quick/status');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Quick status check failed:', error);
+                return null;
+            }
+        }
+
+        let isAuditRunning = false;
+        let pollInterval = null;
+
+        async function smartPoll() {
+            // First do a quick status check
+            const quickStatus = await checkQuickStatus();
+            
+            if (quickStatus) {
+                const hasCurrentAudit = quickStatus.current_audit && 
+                    (quickStatus.current_audit.status === 'cloning' || 
+                     quickStatus.current_audit.status === 'running' || 
+                     quickStatus.current_audit.status === 'processing');
+                
+                if (hasCurrentAudit && !isAuditRunning) {
+                    // Audit just started - show banner and switch to fast polling
+                    isAuditRunning = true;
+                    const banner = document.getElementById('processingBanner');
+                    if (banner) {
+                        banner.style.display = 'flex';
+                    }
+                    console.log('Audit detected, starting fast polling');
+                    updatePollingMode();
+                    
+                } else if (!hasCurrentAudit && isAuditRunning) {
+                    // Audit finished - hide banner
+                    isAuditRunning = false;
+                    const banner = document.getElementById('processingBanner');
+                    if (banner) {
+                        banner.style.display = 'none';
+                    }
+                    console.log('Audit completed, switching to slow polling');
+                    updatePollingMode();
+                    
+                    // Load full projects immediately to show results
+                    loadProjects(false);
+                }
+            }
+        }
+
+        // Check if we were redirected from setup-project with audit in progress
+        const urlParams = new URLSearchParams(window.location.search);
+        const auditId = urlParams.get('audit_id');
+        const status = urlParams.get('status');
+        
+        // Initial load - use quick mode for faster response
+        loadProjects(true);
+        
+        if (status === 'processing') {
+            isAuditRunning = true;
+            const banner = document.getElementById('processingBanner');
+            if (banner) {
+                banner.style.display = 'flex';
+            }
+            console.log(`New audit ${auditId} is being processed...`);
+        }
+        
+        // Start smart polling immediately
+        smartPoll();
+        setInterval(smartPoll, 3000);  // Check status every 3 seconds
+        
+        // Adaptive project loading based on audit status
+        let projectPollInterval;
+        function setupProjectPolling() {
+            if (projectPollInterval) clearInterval(projectPollInterval);
+            
+            if (isAuditRunning) {
+                // During audit: quick polling every 5 seconds
+                projectPollInterval = setInterval(() => loadProjects(true), 5000);
+            } else {
+                // No audit: full polling every 20 seconds
+                projectPollInterval = setInterval(() => loadProjects(false), 20000);
+            }
+        }
+        
+        // Initial setup
+        setupProjectPolling();
+        
+        // Update polling when audit status changes (called from smartPoll)
+        function updatePollingMode() {
+            setupProjectPolling();
+        }
     </script>
 </body>
 </html>

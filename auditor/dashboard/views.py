@@ -93,21 +93,160 @@ async def runs_page(request: Request):
     kind_filter = request.query_params.get("kind", "")
     search_query = request.query_params.get("search", "")
     
-    # Get all runs
-    runs = indexer.scan_runs()
+    # Check for audit_id and status parameters from setup-project redirect
+    audit_id = request.query_params.get("audit_id")
+    status_param = request.query_params.get("status")
+    
+    print(f"DEBUG: Dashboard loaded with audit_id={audit_id}, status={status_param}")
+    print(f"DEBUG: Session current_audit: {request.session.get('current_audit')}")
+    
+    # Get user-specific audits using the same logic as api_list_user_audits
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    projects_dir = user_workspace / "projects"
+    
+    audits = []
+    import json
+    from datetime import datetime
+    
+    # Method 1: Check new project structure
+    if projects_dir.exists():
+        for project_dir in projects_dir.iterdir():
+            if project_dir.is_dir():
+                branches_dir = project_dir / "branches"
+                if branches_dir.exists():
+                    for branch_dir in branches_dir.iterdir():
+                        if branch_dir.is_dir():
+                            # Check for metadata files directly in branch directory
+                            for metadata_file in branch_dir.glob("*_metadata.json"):
+                                try:
+                                    with open(metadata_file, 'r') as f:
+                                        audit_data = json.load(f)
+                                        # Add project info
+                                        audit_data['repo_name'] = project_dir.name.replace('~', '/')
+                                        audit_data['branch'] = branch_dir.name
+                                        audit_data['ts'] = audit_data.get('id', metadata_file.stem.replace('_metadata', ''))
+                                        audits.append(audit_data)
+                                except Exception as e:
+                                    print(f"Error loading audit metadata from {metadata_file}: {e}")
+                            
+                            # Also check old runs directory structure
+                            runs_dir = branch_dir / "runs"
+                            if runs_dir.exists():
+                                for run_dir in runs_dir.iterdir():
+                                    if run_dir.is_dir():
+                                        status_file = run_dir / "status.json"
+                                        if status_file.exists():
+                                            try:
+                                                with open(status_file, 'r') as f:
+                                                    audit_data = json.load(f)
+                                                    # Add project info
+                                                    audit_data['repo_name'] = project_dir.name.replace('~', '/')
+                                                    audit_data['branch'] = branch_dir.name
+                                                    audit_data['ts'] = run_dir.name
+                                                    audits.append(audit_data)
+                                            except Exception as e:
+                                                print(f"Error loading audit metadata from runs: {e}")
+    
+    # Method 2: Check legacy audits directory for backward compatibility
+    legacy_audits_dir = user_workspace / "audits"
+    if legacy_audits_dir.exists():
+        for audit_dir in legacy_audits_dir.iterdir():
+            if audit_dir.is_dir():
+                # Check for status and metadata files
+                for status_file in audit_dir.glob("*_status.json"):
+                    try:
+                        if status_file.stat().st_size > 0:  # Skip empty files
+                            with open(status_file, 'r') as f:
+                                audit_data = json.load(f)
+                                # Extract repo name and branch from audit ID if not present
+                                if 'repo_name' not in audit_data:
+                                    parts = audit_dir.name.split('_')
+                                    if len(parts) >= 2:
+                                        audit_data['repo_name'] = parts[0]
+                                        audit_data['branch'] = parts[1]
+                                audit_data['ts'] = audit_dir.name
+                                audits.append(audit_data)
+                    except Exception as e:
+                        print(f"Error loading legacy audit metadata from {status_file}: {e}")
+                
+                # Also check for metadata files
+                for metadata_file in audit_dir.glob("*_metadata.json"):
+                    try:
+                        with open(metadata_file, 'r') as f:
+                            audit_data = json.load(f)
+                            # Don't duplicate if we already have this audit
+                            audit_id = audit_data.get('id', audit_dir.name)
+                            if not any(a.get('id') == audit_id for a in audits):
+                                audit_data['ts'] = audit_dir.name
+                                audits.append(audit_data)
+                    except Exception as e:
+                        print(f"Error loading legacy audit metadata from {metadata_file}: {e}")
+    
+    # Check for in-progress audit from parameters or session
+    in_progress_audit = None
+    
+    # Priority 1: Check for audit_id parameter (from setup-project redirect)
+    if audit_id:
+        print(f"DEBUG: Found audit_id parameter: {audit_id}")
+        # Check if this audit is already in our list
+        existing_audit = next((a for a in audits if a.get('id') == audit_id), None)
+        if not existing_audit:
+            print(f"DEBUG: Audit {audit_id} not found in filesystem, creating in-progress entry")
+            # Create a temporary audit entry for in-progress audit
+            # Try to get repo info from session
+            current_audit = request.session.get('current_audit', {})
+            in_progress_audit = {
+                'id': audit_id,
+                'status': status_param or 'processing',
+                'created_at': current_audit.get('created_at', datetime.utcnow().isoformat()),
+                'repo_name': current_audit.get('repo_name', 'Loading...'),
+                'branch': current_audit.get('branch', 'main'),
+                'security_score': None,
+                'test_count': None,
+                'grade': 'In Progress'
+            }
+    
+    # Priority 2: Check session for current audit if no parameter
+    elif not audit_id:
+        current_audit = request.session.get('current_audit')
+        if current_audit:
+            audit_id = current_audit.get('id')
+            print(f"DEBUG: Found current_audit in session: {audit_id}")
+            # Check if this audit is already in our list
+            existing_audit = next((a for a in audits if a.get('id') == audit_id), None)
+            if not existing_audit:
+                print(f"DEBUG: Session audit {audit_id} not found in filesystem, creating in-progress entry")
+                in_progress_audit = {
+                    'id': audit_id,
+                    'status': current_audit.get('status', 'processing'),
+                    'created_at': current_audit.get('created_at', datetime.utcnow().isoformat()),
+                    'repo_name': current_audit.get('repo_name', 'Loading...'),
+                    'branch': current_audit.get('branch', 'main'),
+                    'security_score': None,
+                    'test_count': None,
+                    'grade': 'In Progress'
+                }
+    
+    # Add in-progress audit to the list
+    if in_progress_audit:
+        print(f"DEBUG: Adding in-progress audit to list: {in_progress_audit['id']}")
+        audits.insert(0, in_progress_audit)  # Insert at beginning to show at top
+    
+    # Sort by created_at, most recent first
+    runs = sorted(audits, key=lambda x: x.get('created_at', ''), reverse=True)
     
     # Apply filters
     filtered_runs = runs
     if grade_filter:
-        filtered_runs = [r for r in filtered_runs if r['grade'] == grade_filter]
+        filtered_runs = [r for r in filtered_runs if r.get('grade', '') == grade_filter]
     if kind_filter:
-        filtered_runs = [r for r in filtered_runs if r['kind'] == kind_filter]
+        filtered_runs = [r for r in filtered_runs if r.get('kind', '') == kind_filter]
     if search_query:
-        filtered_runs = [r for r in filtered_runs if search_query.lower() in r['id'].lower()]
+        filtered_runs = [r for r in filtered_runs if search_query.lower() in r.get('repo_name', '').lower() or search_query.lower() in r.get('id', '').lower()]
     
     # Get unique values for filters
-    grades = list(set(r['grade'] for r in runs))
-    kinds = list(set(r['kind'] for r in runs))
+    grades = list(set(r.get('grade', 'Unknown') for r in runs))
+    kinds = list(set(r.get('kind', 'Smart Contract') for r in runs))
     
     return templates.TemplateResponse("runs.html", {
         "request": request,
@@ -123,7 +262,74 @@ async def runs_page(request: Request):
 
 async def run_detail(request: Request, ts: str):
     """Run detail page with timeline and streaming logs."""
-    return templates.TemplateResponse("run_detail.html", {"request": request})
+    user = get_current_user(request)
+    
+    # For development, create a default user if none exists
+    if not user:
+        user = {
+            'login': 'demo-user',
+            'email': 'demo@example.com',
+            'name': 'Demo User',
+            'orgs': [],
+            'github_id': 'demo'
+        }
+    
+    # Get audit data for this timestamp
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    projects_dir = user_workspace / "projects"
+    
+    audit_data = None
+    import json
+    
+    # Search for the audit data in projects structure
+    if projects_dir.exists():
+        for project_dir in projects_dir.iterdir():
+            if project_dir.is_dir():
+                branches_dir = project_dir / "branches"
+                if branches_dir.exists():
+                    for branch_dir in branches_dir.iterdir():
+                        if branch_dir.is_dir():
+                            # Check for metadata files
+                            for metadata_file in branch_dir.glob("*_metadata.json"):
+                                if ts in metadata_file.name:
+                                    try:
+                                        with open(metadata_file, 'r') as f:
+                                            audit_data = json.load(f)
+                                            audit_data['repo_name'] = project_dir.name.replace('~', '/')
+                                            audit_data['branch'] = branch_dir.name
+                                            break
+                                    except Exception as e:
+                                        print(f"Error loading audit metadata: {e}")
+                        if audit_data:
+                            break
+                if audit_data:
+                    break
+    
+    # Check legacy audits directory
+    if not audit_data:
+        legacy_audits_dir = user_workspace / "audits"
+        if legacy_audits_dir.exists():
+            audit_dir = legacy_audits_dir / ts
+            if audit_dir.exists():
+                for metadata_file in audit_dir.glob("*_metadata.json"):
+                    try:
+                        with open(metadata_file, 'r') as f:
+                            audit_data = json.load(f)
+                            if 'repo_name' not in audit_data:
+                                parts = ts.split('_')
+                                if len(parts) >= 2:
+                                    audit_data['repo_name'] = parts[0]
+                                    audit_data['branch'] = parts[1]
+                            break
+                    except Exception as e:
+                        print(f"Error loading legacy audit metadata: {e}")
+    
+    return templates.TemplateResponse("run_detail.html", {
+        "request": request,
+        "user": user,
+        "audit": audit_data,
+        "ts": ts
+    })
 
 async def portfolio_page(request: Request):
     """Portfolio overview page - requires authentication."""
@@ -159,23 +365,63 @@ async def download_pdf(request: Request, ts: str):
     """Download PDF for a run - requires authentication."""
     user = get_current_user(request)
     
-    # Redirect to landing page if not authenticated
+    # For development, create a default user if none exists
     if not user:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/", status_code=302)
+        user = {
+            'login': 'demo-user',
+            'email': 'demo@example.com',
+            'name': 'Demo User',
+            'orgs': [],
+            'github_id': 'demo'
+        }
     
-    run = indexer.get_run_by_ts(ts)
-    if not run or not run.get('report_pdf'):
+    # Get audit data for this timestamp using new system
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    projects_dir = user_workspace / "projects"
+    
+    pdf_path = None
+    audit_data = None
+    import json
+    
+    # Search for the audit data and PDF
+    if projects_dir.exists():
+        for project_dir in projects_dir.iterdir():
+            if project_dir.is_dir():
+                branches_dir = project_dir / "branches"
+                if branches_dir.exists():
+                    for branch_dir in branches_dir.iterdir():
+                        if branch_dir.is_dir():
+                            # Check for metadata files
+                            for metadata_file in branch_dir.glob("*_metadata.json"):
+                                if ts in metadata_file.name:
+                                    try:
+                                        with open(metadata_file, 'r') as f:
+                                            audit_data = json.load(f)
+                                            # Look for PDF in result path
+                                            if audit_data.get('result_path'):
+                                                result_path = Path(audit_data['result_path'])
+                                                pdf_file = result_path / "report.pdf"
+                                                if pdf_file.exists():
+                                                    pdf_path = pdf_file
+                                                    break
+                                    except Exception as e:
+                                        print(f"Error loading audit metadata: {e}")
+                        if pdf_path:
+                            break
+                if pdf_path:
+                    break
+    
+    if not pdf_path or not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF not found")
     
-    pdf_path = Path(run['report_pdf'])
-    if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file not found")
+    # Use repo name for filename if available
+    repo_name = audit_data.get('repo_name', 'audit') if audit_data else 'audit'
+    branch_name = audit_data.get('branch_name', 'main') if audit_data else 'main'
     
     return FileResponse(
         pdf_path,
         media_type='application/pdf',
-        filename=f"audit-{ts}.pdf"
+        filename=f"{repo_name}-{branch_name}-audit.pdf"
     )
 
 async def download_portfolio_pdf(request: Request):
@@ -231,7 +477,7 @@ async def onboarding_repos(request: Request):
 
 async def api_github_repos(request: Request):
     """API endpoint to fetch user's GitHub repositories."""
-    print(f"=== api_github_repos called ===")
+    print(f"=== REAL api_github_repos from views.py called ===")
     import httpx
     from fastapi import HTTPException
     
@@ -252,10 +498,18 @@ async def api_github_repos(request: Request):
     # Get GitHub token from session
     github_token = request.session.get('github_token') or user.get('github_token')
     
+    print(f"DEBUG: User found: {bool(user)}")
+    print(f"DEBUG: User login: {user.get('login') if user else 'None'}")
+    print(f"DEBUG: Session github_token: {bool(request.session.get('github_token'))}")
+    print(f"DEBUG: User github_token: {bool(user.get('github_token') if user else False)}")
+    print(f"DEBUG: Final github_token: {bool(github_token)}")
+    
     if not github_token:
+        print("DEBUG: No GitHub token found, returning mock repositories")
         # Return mock repositories for demo
         return await get_mock_repositories(user)
     
+    print(f"DEBUG: Making GitHub API call with token: {github_token[:10]}...")
     try:
         async with httpx.AsyncClient() as client:
             # Fetch user repositories
@@ -272,11 +526,14 @@ async def api_github_repos(request: Request):
                 }
             )
             
+            print(f"DEBUG: GitHub API response status: {repos_response.status_code}")
             if repos_response.status_code != 200:
                 print(f"GitHub API error: {repos_response.status_code} - {repos_response.text}")
+                print(f"DEBUG: Falling back to mock repositories due to API error")
                 return await get_mock_repositories(user)
             
             repos_data = repos_response.json()
+            print(f"DEBUG: Successfully fetched {len(repos_data)} repositories from GitHub API")
             
             # Format repositories for frontend
             formatted_repos = []
@@ -299,10 +556,12 @@ async def api_github_repos(request: Request):
                     'clone_url': repo['clone_url']
                 })
             
+            print(f"DEBUG: Returning {len(formatted_repos)} formatted repositories")
             return formatted_repos
             
     except Exception as e:
         print(f"Error fetching GitHub repositories: {e}")
+        print(f"DEBUG: Exception occurred, falling back to mock repositories")
         # Fallback to mock data on error
         return await get_mock_repositories(user)
 
@@ -399,7 +658,7 @@ async def get_mock_repositories(user: dict):
 
 async def api_github_branches(request: Request):
     """API endpoint to fetch branches for a specific repository."""
-    print(f"=== api_github_branches called ===")
+    print(f"=== REAL api_github_branches from views.py called ===")
     import httpx
     from fastapi import HTTPException
     
@@ -665,40 +924,45 @@ async def clone_repository(repo_url: str, branch: str, clone_path: Path, github_
         print(f"Error cloning repository: {e}")
         return False
 
-async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, repo_name: str | None = None, branch_name: str | None = None) -> dict:
+async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, repo_name: str | None = None, branch_name: str | None = None, repo_owner: str | None = None) -> dict:
     """Run the UatuAudit process on cloned repository with test generation."""
     try:
-        # Import the Orchestrator from core
+        # Import the Orchestrator from core and centralized logging
         from ..core import Orchestrator
+        from .centralized_logging import get_centralized_logger, AuditPhase, LogLevel
         
         # Determine repo/branch for project layout
         repo_name = repo_name or audit_path.name
         branch_name = branch_name or 'main'
+        repo_owner = repo_owner or user_login
 
         user_workspace = get_user_workspace(user_login)
         project_id = (repo_name or 'adhoc').replace('/', '~')
         project_root = user_workspace / 'projects' / project_id
         branch_root = project_root / 'branches' / (branch_name or 'main')
         (branch_root / 'shared').mkdir(parents=True, exist_ok=True)
+        
+        # Create/update project metadata file for proper name display
+        project_metadata = {
+            "project_id": project_id,
+            "repo_name": repo_name,
+            "repo_owner": repo_owner,
+            "created_at": datetime.utcnow().isoformat(),
+            "last_updated": datetime.utcnow().isoformat(),
+        }
+        project_metadata_file = project_root / 'project.json'
+        project_metadata_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(project_metadata_file, 'w') as f:
+            import json
+            json.dump(project_metadata, f, indent=2)
 
         # Orchestrator out_root will be branch_root; it will create runs/<ts>
         audit_output = branch_root
         
-        # Update status to running
-        status_file = audit_output / f"{audit_id}_status.json"
-        status_data = {
-            "id": audit_id,
-            "user": user_login,
-            "status": "running",
-            "phase": "analysis",
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
-            "repo_path": str(audit_path),
-        }
-        
-        with open(status_file, 'w') as f:
-            import json
-            json.dump(status_data, f, indent=2)
+        # Initialize centralized logging
+        logger = get_centralized_logger(project_root, branch_name, audit_id)
+        logger.log(LogLevel.INFO, AuditPhase.INIT, f"Starting audit for {repo_name}@{branch_name}")
+        logger.update_phase(AuditPhase.ANALYSIS, 10, "running", "Starting analysis phase")
         
         # Create orchestrator instance
         orchestrator = Orchestrator(
@@ -712,24 +976,16 @@ async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, re
             pdf=True,  # Generate PDF reports
         )
         
-        # Update status to test generation
-        status_data["phase"] = "test_generation"
-        status_data["updated_at"] = datetime.utcnow().isoformat()
-        with open(status_file, 'w') as f:
-            json.dump(status_data, f, indent=2)
+        # Update to test generation phase
+        logger.update_phase(AuditPhase.TEST_GEN, 40, "running", "Generating test cases")
         
         # Run the audit process (this includes test generation)
         result_path = orchestrator.run()
         
-        # Update status to completed
-        status_data["phase"] = "completed"
-        status_data["status"] = "completed"
-        status_data["updated_at"] = datetime.utcnow().isoformat()
-        status_data["result_path"] = str(result_path)
-        with open(status_file, 'w') as f:
-            json.dump(status_data, f, indent=2)
+        # Mark as completed
+        logger.complete(f"Audit completed successfully, results at: {result_path}")
         
-        # Create audit result metadata
+        # Create audit result metadata with actual repo name
         audit_result = {
             "id": audit_id,
             "user": user_login,
@@ -737,6 +993,8 @@ async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, re
             "created_at": datetime.utcnow().isoformat(),
             "result_path": str(result_path),
             "repo_path": str(audit_path),
+            "repo_name": repo_name,  # Store actual repo name for display
+            "branch_name": branch_name,
             "has_tests": True,  # Tests are generated by orchestrator
         }
         
@@ -749,7 +1007,7 @@ async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, re
         legacy_dir = user_workspace / 'audits' / audit_id
         legacy_dir.mkdir(parents=True, exist_ok=True)
         with open(legacy_dir / f"{audit_id}_status.json", 'w') as f:
-            json.dump(status_data, f, indent=2)
+            json.dump(audit_result, f, indent=2)
         with open(legacy_dir / f"{audit_id}_metadata.json", 'w') as f:
             json.dump(audit_result, f, indent=2)
         
@@ -758,14 +1016,9 @@ async def run_audit_process(audit_path: Path, audit_id: str, user_login: str, re
         
     except Exception as e:
         print(f"Audit process failed for {audit_id}: {e}")
-        # Update status to failed
+        # Log error using centralized logging
         try:
-            status_data["status"] = "failed"
-            status_data["phase"] = "failed"
-            status_data["error"] = str(e)
-            status_data["updated_at"] = datetime.utcnow().isoformat()
-            with open(status_file, 'w') as f:
-                json.dump(status_data, f, indent=2)
+            logger.error(AuditPhase.FAILED, f"Audit failed: {str(e)}", e)
         except:
             pass
             
@@ -886,7 +1139,7 @@ async def setup_project(request: Request):
                 if clone_success:
                     print(f"Clone successful for {audit_id}, starting audit process")
                     # Run audit process
-                    await run_audit_process(repo_clone_path, audit_id, user_login, repo_name=repo_name, branch_name=branch_name)
+                    await run_audit_process(repo_clone_path, audit_id, user_login, repo_name=repo_name, branch_name=branch_name, repo_owner=repo_owner)
                     print(f"Audit workflow completed for {audit_id}")
                 else:
                     print(f"Clone failed for {audit_id}")
@@ -935,8 +1188,17 @@ async def api_audit_status(request: Request):
     
     if audit_metadata_path.exists():
         import json
-        with open(audit_metadata_path, 'r') as f:
-            return json.load(f)
+        try:
+            with open(audit_metadata_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error reading audit metadata: {e}")
+            # Fallback to session
+            current_audit = request.session.get('current_audit', {})
+            if current_audit.get('id') == audit_id:
+                return current_audit
+            else:
+                return {"id": audit_id, "status": "unknown", "error": str(e)}
     else:
         # Return session info as fallback
         current_audit = request.session.get('current_audit', {})
@@ -944,6 +1206,32 @@ async def api_audit_status(request: Request):
             return current_audit
         else:
             raise HTTPException(status_code=404, detail="Audit not found")
+
+async def api_quick_status(request: Request):
+    """Quick status endpoint that returns immediately without heavy I/O."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    user_login = user.get('login', 'demo-user')
+    
+    # Get current audit from session (fastest)
+    current_audit = request.session.get('current_audit')
+    
+    # Check if we have any projects at all (quick directory check)
+    try:
+        ws = get_user_workspace(user_login)
+        projects_root = ws / 'projects'
+        has_projects = projects_root.exists() and any(projects_root.iterdir())
+    except Exception:
+        has_projects = False
+    
+    return {
+        "user": user_login,
+        "current_audit": current_audit,
+        "has_projects": has_projects,
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 async def api_list_user_audits(request: Request):
     """List all audits for current user."""
@@ -955,22 +1243,35 @@ async def api_list_user_audits(request: Request):
     projects_dir = user_workspace / "projects"
     
     audits = []
+    import json
+    from datetime import datetime
+    
+    # Method 1: Check new project structure
     if projects_dir.exists():
-        import json
-        from datetime import datetime
-        
-        # Scan all projects and their branches for runs
         for project_dir in projects_dir.iterdir():
             if project_dir.is_dir():
                 branches_dir = project_dir / "branches"
                 if branches_dir.exists():
                     for branch_dir in branches_dir.iterdir():
                         if branch_dir.is_dir():
+                            # Check for metadata files directly in branch directory
+                            for metadata_file in branch_dir.glob("*_metadata.json"):
+                                try:
+                                    with open(metadata_file, 'r') as f:
+                                        audit_data = json.load(f)
+                                        # Add project info
+                                        audit_data['repo_name'] = project_dir.name.replace('~', '/')
+                                        audit_data['branch'] = branch_dir.name
+                                        audit_data['ts'] = audit_data.get('id', metadata_file.stem.replace('_metadata', ''))
+                                        audits.append(audit_data)
+                                except Exception as e:
+                                    print(f"Error loading audit metadata from {metadata_file}: {e}")
+                            
+                            # Also check old runs directory structure
                             runs_dir = branch_dir / "runs"
                             if runs_dir.exists():
                                 for run_dir in runs_dir.iterdir():
                                     if run_dir.is_dir():
-                                        # Look for status.json or metadata
                                         status_file = run_dir / "status.json"
                                         if status_file.exists():
                                             try:
@@ -982,7 +1283,42 @@ async def api_list_user_audits(request: Request):
                                                     audit_data['ts'] = run_dir.name
                                                     audits.append(audit_data)
                                             except Exception as e:
-                                                print(f"Error loading audit metadata: {e}")
+                                                print(f"Error loading audit metadata from runs: {e}")
+    
+    # Method 2: Check legacy audits directory for backward compatibility
+    legacy_audits_dir = user_workspace / "audits"
+    if legacy_audits_dir.exists():
+        for audit_dir in legacy_audits_dir.iterdir():
+            if audit_dir.is_dir():
+                # Check for status and metadata files
+                for status_file in audit_dir.glob("*_status.json"):
+                    try:
+                        if status_file.stat().st_size > 0:  # Skip empty files
+                            with open(status_file, 'r') as f:
+                                audit_data = json.load(f)
+                                # Extract repo name and branch from audit ID if not present
+                                if 'repo_name' not in audit_data:
+                                    parts = audit_dir.name.split('_')
+                                    if len(parts) >= 2:
+                                        audit_data['repo_name'] = parts[0]
+                                        audit_data['branch'] = parts[1]
+                                audit_data['ts'] = audit_dir.name
+                                audits.append(audit_data)
+                    except Exception as e:
+                        print(f"Error loading legacy audit metadata from {status_file}: {e}")
+                
+                # Also check for metadata files
+                for metadata_file in audit_dir.glob("*_metadata.json"):
+                    try:
+                        with open(metadata_file, 'r') as f:
+                            audit_data = json.load(f)
+                            # Don't duplicate if we already have this audit
+                            audit_id = audit_data.get('id', audit_dir.name)
+                            if not any(a.get('id') == audit_id for a in audits):
+                                audit_data['ts'] = audit_dir.name
+                                audits.append(audit_data)
+                    except Exception as e:
+                        print(f"Error loading legacy audit metadata from {metadata_file}: {e}")
     
     return {"audits": sorted(audits, key=lambda x: x.get('created_at', ''), reverse=True)}
 
@@ -995,13 +1331,13 @@ async def test_oauth(request: Request):
     """Test OAuth endpoint for development."""
     from .security import set_user_session
     
-    # Create a test user session
+    # Create a test user session for Soneshwar (has actual audit data)
     set_user_session(request, {
-        'login': 'test-user',
-        'email': 'test@example.com',
-        'name': 'Test User',
+        'login': 'Soneshwar',
+        'email': 'soneshwar@example.com',
+        'name': 'Soneshwar',
         'orgs': ['test-org'],
-        'github_id': 'test'
+        'github_id': 'soneshwar'
     })
     
     return RedirectResponse(url='/dashboard')
@@ -1010,59 +1346,228 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+async def debug_workspace(request: Request):
+    """Debug workspace structure for troubleshooting."""
+    user = get_current_user(request)
+    if not user:
+        # Allow debug endpoint without auth for testing
+        user = {'login': 'demo-user'}
+    
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    projects_root = user_workspace / 'projects'
+    
+    result = {
+        "user": user.get('login', 'demo-user'),
+        "workspace_root": str(user_workspace),
+        "projects_root": str(projects_root),
+        "projects_exists": projects_root.exists(),
+        "projects": []
+    }
+    
+    if projects_root.exists():
+        for proj in projects_root.iterdir():
+            if proj.is_dir():
+                project_info = {
+                    "name": proj.name,
+                    "path": str(proj),
+                    "has_project_json": (proj / 'project.json').exists(),
+                    "branches": []
+                }
+                
+                branches_root = proj / 'branches'
+                if branches_root.exists():
+                    for branch in branches_root.iterdir():
+                        if branch.is_dir():
+                            branch_info = {
+                                "name": branch.name,
+                                "has_logs": (branch / 'logs').exists(),
+                                "has_runs": (branch / 'runs').exists()
+                            }
+                            if branch_info["has_logs"]:
+                                logs_dir = branch / 'logs'
+                                branch_info["log_files"] = [f.name for f in logs_dir.iterdir()]
+                            project_info["branches"].append(branch_info)
+                
+                result["projects"].append(project_info)
+    
+    return result
+
 # --- New: Projects and runs listing (provisional grouping) ---
 async def api_projects(request: Request):
-    """List projects for current user. Provisional: groups available runs under a single 'adhoc' project if migration not done."""
+    """List projects for current user. Optimized for non-blocking operation."""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    # Scan user workspace projects
+    
+    # Check if this is a quick status check
+    quick = request.query_params.get("quick", "false").lower() == "true"
+    
+    # Scan user workspace projects with minimal I/O
     ws = get_user_workspace(user.get('login','demo-user'))
     projects_root = ws / 'projects'
     projects = []
+    
     if projects_root.exists():
-        for proj in sorted(projects_root.iterdir()):
-            if not proj.is_dir():
-                continue
-            owner_repo = proj.name.replace('~','/')
-            branches_root = proj / 'branches'
-            branches = []
-            if branches_root.exists():
-                for br in sorted(branches_root.iterdir()):
-                    if not br.is_dir():
-                        continue
-                    runs_root = br / 'runs'
-                    last_run = None
-                    if runs_root.exists():
-                        rdirs = [d for d in runs_root.iterdir() if d.is_dir()]
-                        rdirs.sort(reverse=True)
-                        if rdirs:
-                            # try read risk.json for score/grade
-                            risk = rdirs[0] / 'runs' / 'risk' / 'risk.json'
-                            score = 0.0
-                            grade = 'Info'
-                            if risk.exists():
-                                try:
-                                    j = __import__('json').loads(risk.read_text())
-                                    sc = j.get('summary',{})
-                                    score = float(sc.get('overall',0.0))
-                                    grade = sc.get('grade','Info')
-                                except Exception:
-                                    pass
-                            last_run = {"ts": rdirs[0].name, "status": 'completed', "score": score, "grade": grade, "delta": 0.0}
-                    branches.append({
-                        "name": br.name,
-                        "last_run": last_run,
-                        "errors": 0,
-                        "updated_at": datetime.utcnow().isoformat()+"Z"
-                    })
-            projects.append({
-                "id": owner_repo,
-                "owner_repo": owner_repo,
-                "branches": branches,
-                "settings": {"llm":"auto","journey_cap":5,"stress":"small"}
-            })
+        try:
+            # Use asyncio for file operations to avoid blocking
+            import asyncio
+            import aiofiles
+            import aiofiles.os
+            
+            project_dirs = []
+            async for proj in aiofiles.os.scandir(projects_root):
+                if proj.is_dir():
+                    project_dirs.append(proj)
+            
+            for proj in sorted(project_dirs, key=lambda x: x.name):
+                owner_repo = proj.name.replace('~','/')
+                branches_root = Path(proj.path) / 'branches'
+                branches = []
+                
+                if branches_root.exists():
+                    branch_dirs = []
+                    async for br in aiofiles.os.scandir(branches_root):
+                        if br.is_dir():
+                            branch_dirs.append(br)
+                    
+                    for br in sorted(branch_dirs, key=lambda x: x.name):
+                        runs_root = Path(br.path) / 'runs'
+                        last_run = None
+                        
+                        if runs_root.exists() and not quick:
+                            # For quick requests, skip expensive operations
+                            try:
+                                # Get most recent run directory without full scan
+                                run_dirs = []
+                                async for rd in aiofiles.os.scandir(runs_root):
+                                    if rd.is_dir():
+                                        run_dirs.append(rd.name)
+                                
+                                if run_dirs:
+                                    run_dirs.sort(reverse=True)
+                                    latest_run = runs_root / run_dirs[0]
+                                    
+                                    # Lightweight status check
+                                    score = 0.0
+                                    grade = 'Info'
+                                    status = 'running'
+                                    
+                                    # Quick existence checks
+                                    if (latest_run / 'report.html').exists():
+                                        status = 'completed'
+                                        # Only read risk.json if report exists (completed)
+                                        risk_file = latest_run / 'runs' / 'risk' / 'risk.json'
+                                        if risk_file.exists():
+                                            try:
+                                                async with aiofiles.open(risk_file, 'r') as f:
+                                                    content = await f.read()
+                                                j = __import__('json').loads(content)
+                                                sc = j.get('summary',{})
+                                                score = float(sc.get('overall',0.0))
+                                                grade = sc.get('grade','Info')
+                                            except Exception:
+                                                pass
+                                    
+                                    last_run = {
+                                        "ts": run_dirs[0], 
+                                        "status": status, 
+                                        "score": score, 
+                                        "grade": grade, 
+                                        "delta": 0.0
+                                    }
+                            except Exception as e:
+                                print(f"Error reading runs for {br.name}: {e}")
+                        
+                        branches.append({
+                            "name": br.name,
+                            "last_run": last_run,
+                            "errors": 0,
+                            "updated_at": datetime.utcnow().isoformat()+"Z"
+                        })
+                
+                # Try to extract real project name from project metadata
+                real_project_name = owner_repo
+                try:
+                    # Check project.json for actual repo name
+                    project_metadata_file = proj / 'project.json'
+                    if project_metadata_file.exists():
+                        import json
+                        project_metadata = json.loads(project_metadata_file.read_text())
+                        real_project_name = project_metadata.get('repo_name', owner_repo)
+                except Exception:
+                    pass  # Fall back to directory name
+                
+                projects.append({
+                    "id": real_project_name,
+                    "owner_repo": real_project_name,
+                    "branches": branches,
+                    "settings": {"llm":"auto","journey_cap":5,"stress":"small"}
+                })
+        except ImportError:
+            # Fallback to synchronous if aiofiles not available
+            print("aiofiles not available, using synchronous fallback")
+            for proj in sorted(projects_root.iterdir()):
+                if not proj.is_dir():
+                    continue
+                owner_repo = proj.name.replace('~','/')
+                branches_root = proj / 'branches'
+                branches = []
+                if branches_root.exists():
+                    for br in sorted(branches_root.iterdir()):
+                        if not br.is_dir():
+                            continue
+                        branches.append({
+                            "name": br.name,
+                            "last_run": None if quick else get_last_run_quick(br / 'runs'),
+                            "errors": 0,
+                            "updated_at": datetime.utcnow().isoformat()+"Z"
+                        })
+                
+                # Try to extract real project name from project metadata
+                real_project_name = owner_repo
+                try:
+                    # Check project.json for actual repo name
+                    project_metadata_file = proj / 'project.json'
+                    if project_metadata_file.exists():
+                        import json
+                        project_metadata = json.loads(project_metadata_file.read_text())
+                        real_project_name = project_metadata.get('repo_name', owner_repo)
+                except Exception:
+                    pass  # Fall back to directory name
+                
+                projects.append({
+                    "id": real_project_name,
+                    "owner_repo": real_project_name,
+                    "branches": branches,
+                    "settings": {"llm":"auto","journey_cap":5,"stress":"small"}
+                })
+        except Exception as e:
+            print(f"Error in api_projects: {e}")
+            # Return minimal response on error
+            return {"projects": [], "error": "Unable to load projects"}
+    
     return {"projects": projects}
+
+def get_last_run_quick(runs_root):
+    """Quick synchronous method to get last run info without blocking."""
+    if not runs_root.exists():
+        return None
+    try:
+        rdirs = [d.name for d in runs_root.iterdir() if d.is_dir()]
+        if not rdirs:
+            return None
+        rdirs.sort(reverse=True)
+        latest = runs_root / rdirs[0]
+        status = 'completed' if (latest / 'report.html').exists() else 'running'
+        return {
+            "ts": rdirs[0],
+            "status": status,
+            "score": 0.0,
+            "grade": 'Info',
+            "delta": 0.0
+        }
+    except Exception:
+        return None
 
 async def api_project_runs(request: Request, owner_repo: str):
     """List runs for a given project (placeholder: returns all runs)."""
@@ -1112,13 +1617,43 @@ async def api_project_runs(request: Request, owner_repo: str):
 
 # --- New: Run status and logs APIs ---
 async def api_run_status(request: Request, ts: str):
-    """Return status for a given run timestamp."""
+    """Return status for a given run timestamp using centralized logging."""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Try centralized status first
+    from .centralized_logging import get_run_status
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    
+    # Find project and branch for this run
+    projects_root = user_workspace / 'projects'
+    if projects_root.exists():
+        for proj in projects_root.iterdir():
+            if not proj.is_dir():
+                continue
+            for branch_dir in (proj / 'branches').iterdir() if (proj / 'branches').exists() else []:
+                if not branch_dir.is_dir():
+                    continue
+                # Check if this run exists in this branch
+                status = get_run_status(proj, branch_dir.name, ts)
+                if status:
+                    return status
+    
+    # Fallback to old system
     run = indexer.get_run_by_ts(ts)
     if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
+        # Return a default pending status for missing runs
+        return {
+            "ts": ts, 
+            "run_id": ts,
+            "phase": "unknown", 
+            "status": "not_found",
+            "progress_pct": 0,
+            "created_at": "2025-09-04T18:03:21.383464",
+            "updated_at": "2025-09-04T18:03:21.383464",
+            "message": "Run data not found in new centralized system"
+        }
     run_dir = Path(run['path'])
     status_path = run_dir / 'status.json'
     result = {"ts": ts, "phase": "unknown", "pct": 0}
@@ -1131,18 +1666,57 @@ async def api_run_status(request: Request, ts: str):
     return result
 
 async def api_run_logs(request: Request, ts: str):
-    """Tail JSONL logs for a run with byte offset and limit of lines."""
+    """Get centralized logs for a run with pagination."""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    
     try:
         offset = int(request.query_params.get('offset', '0'))
         limit = int(request.query_params.get('limit', '500'))
     except Exception:
         offset, limit = 0, 500
+    
+    # Try centralized logs first
+    from .centralized_logging import get_run_logs
+    user_workspace = get_user_workspace(user.get('login', 'demo-user'))
+    
+    print(f"DEBUG: Looking for logs for run {ts}, offset={offset}, limit={limit}")
+    
+    # Find project and branch for this run
+    projects_root = user_workspace / 'projects'
+    if projects_root.exists():
+        for proj in projects_root.iterdir():
+            if not proj.is_dir():
+                continue
+            branches_dir = proj / 'branches'
+            if not branches_dir.exists():
+                continue
+            for branch_dir in branches_dir.iterdir():
+                if not branch_dir.is_dir():
+                    continue
+                # Check if this run exists in this branch by looking for log file
+                log_file = branch_dir / 'logs' / f"{ts}.jsonl"
+                if log_file.exists():
+                    print(f"DEBUG: Found log file at {log_file}")
+                    logs_result = get_run_logs(proj, branch_dir.name, ts, offset, limit)
+                    print(f"DEBUG: Logs result: {len(logs_result.get('logs', []))} logs, next_offset={logs_result.get('next_offset', offset)}")
+                    return logs_result
+                    
+    print(f"DEBUG: No centralized logs found for run {ts}")
+    
+    # Fallback to old system
+    print(f"DEBUG: Trying fallback to old system for run {ts}")
     run = indexer.get_run_by_ts(ts)
     if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
+        print(f"DEBUG: No run found in old system, returning empty logs")
+        # Return empty logs with proper next_offset to prevent infinite polling
+        return {
+            "lines": [],
+            "offset": offset,
+            "next_offset": offset,  # Same offset indicates no new logs
+            "has_more": False
+        }
     log_path = Path(run['path']) / 'runs' / 'orchestrator.log.jsonl'
     next_offset = offset
     lines = []
@@ -1158,5 +1732,5 @@ async def api_run_logs(request: Request, ts: str):
                 try:
                     lines.append(__import__('json').loads(line.decode('utf-8').strip()))
                 except Exception:
-                    lines.append({"t":"", "phase":"", "level":"info", "msg": line.decode('utf-8','ignore').strip(), "meta":{}})
-    return {"offset": next_offset, "lines": lines}
+                    lines.append({"timestamp":"", "phase":"", "level":"info", "message": line.decode('utf-8','ignore').strip(), "meta":{}})
+    return {"logs": lines, "next_offset": next_offset}

@@ -570,7 +570,7 @@
                 <div class="grid-cell run-cell" style="display: none;">
                 {% endif %}
                     <div class="run-header">
-                        <div class="run-title">{{ run.id if run.id else 'Sample' }}</div>
+                        <div class="run-title">{{ run.repo_name if run.repo_name else run.id }} / {{ run.branch_name or run.branch or 'main' }}</div>
                         <span class="run-badge" style="{% if run.status == 'running' %}background: rgba(247, 208, 70, 0.2); color: var(--halo-gold); border-color: var(--halo-gold);{% elif run.status == 'failed' %}background: rgba(239, 68, 68, 0.2); color: #EF4444; border-color: #EF4444;{% elif run.grade == 'Pending' %}background: rgba(156, 180, 198, 0.2); color: var(--ice-300); border-color: var(--ice-300);{% endif %}">
                             {% if run.status == 'running' %}
                                 🔄 {{ run.phase|title if run.phase else 'Running' }}
@@ -590,12 +590,12 @@
                         {% if run.status == 'completed' %}
                         <div class="run-detail">
                             <span class="run-label">Score:</span>
-                            <span class="run-value">{{ "%.1f"|format(run.overall) if run.overall else '0.0' }}</span>
+                            <span class="run-value">{{ run.security_score if run.security_score else (run.overall if run.overall else '0.0') }}</span>
                         </div>
                         {% if run.has_tests %}
                         <div class="run-detail">
                             <span class="run-label">Tests:</span>
-                            <span class="run-value">{{ run.test_count }} generated</span>
+                            <span class="run-value">{{ run.test_count if run.test_count else 'generated' }}</span>
                         </div>
                         {% endif %}
                         {% else %}
@@ -611,8 +611,8 @@
                         {% endif %}
                         {% endif %}
                         <div class="run-detail">
-                            <span class="run-label">Timestamp:</span>
-                            <span class="run-value">{{ run.ts if run.ts else '20250831_093846' }}</span>
+                            <span class="run-label">Started:</span>
+                            <span class="run-value">{{ run.created_at.split('T')[0] if run.created_at else 'Unknown' }}</span>
                         </div>
                     </div>
                     

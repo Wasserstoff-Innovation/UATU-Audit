@@ -254,10 +254,39 @@ def build_report(outdir: Path) -> None:
     )
     
     # Prepare PDF data
+    # Derive a stable project display name from the path: .../projects/<project>/branches/<branch>/<ts>
+    try:
+        # Try to get project info from meta.json first (for GitHub repos)
+        project_meta_path = outdir / "meta.json"
+        if project_meta_path.exists():
+            try:
+                project_meta = json.loads(project_meta_path.read_text())
+                if "repo_url" in project_meta:
+                    # Extract repo name from GitHub URL
+                    import re
+                    match = re.search(r'github\.com[:/]([^/]+)/([^/\.]+)', project_meta["repo_url"])
+                    if match:
+                        owner, repo = match.groups()
+                        project_name = f"{owner}/{repo}"
+                    else:
+                        project_name = project_meta.get("project_name", outdir.parents[2].name)
+                else:
+                    project_name = project_meta.get("project_name", outdir.parents[2].name)
+            except:
+                project_name = outdir.parents[2].name  # fallback to directory name
+        else:
+            project_name = outdir.parents[2].name  # <project>
+        
+        branch_name = outdir.parents[1].name   # <branch>
+        project_display = f"{project_name}@{branch_name}"
+    except Exception:
+        project_display = "Unknown"
+
     pdf_data = {
         "title": "Uatu Audit Report",
         "report_kind": "Smart Contract Security Analysis",
-        "contract_id": flows.get("contracts", [{}])[0].get("name", "Unknown") if flows.get("contracts") else "Unknown",
+        # Prefer project display over first contract name to avoid 'Ownable' default
+        "contract_id": project_display,
         "commit": "N/A",  # Could be extracted from git if available
         "generated_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "summary": risk_summary or {},

@@ -24,8 +24,8 @@ from .views import (
     github_auth, auth_callback, logout,
     runs_page, run_detail, portfolio_page, projects_page,
     download_pdf, download_portfolio_pdf, download_csv,
-    health_check, landing_page, onboarding_repos, api_github_repos, api_github_branches, 
-    api_audit_status, api_list_user_audits, test_endpoint, test_oauth, setup_project,
+    health_check, debug_workspace, landing_page, onboarding_repos, api_github_repos, api_github_branches, 
+    api_audit_status, api_quick_status, api_list_user_audits, test_endpoint, test_oauth, setup_project,
     api_run_status, api_run_logs, api_projects, api_project_runs
 )
 # Temporarily disable wallet auth imports until dependencies are installed
@@ -60,9 +60,10 @@ app.add_api_route("/download/pdf/{ts}", download_pdf, methods=["GET"])
 app.add_api_route("/download/portfolio/pdf", download_portfolio_pdf, methods=["GET"])
 app.add_api_route("/download/portfolio/csv", download_csv, methods=["GET"])
 app.add_api_route("/onboarding/repos", onboarding_repos, methods=["GET"])
-# app.add_api_route("/api/github/repos", api_github_repos, methods=["GET"])  # Using direct endpoint instead
-# app.add_api_route("/api/github/branches", api_github_branches, methods=["GET"])  # Using direct endpoint instead
+app.add_api_route("/api/github/repos", api_github_repos, methods=["GET"])
+app.add_api_route("/api/github/branches", api_github_branches, methods=["GET"])
 app.add_api_route("/api/audit/status", api_audit_status, methods=["GET"])
+app.add_api_route("/api/quick/status", api_quick_status, methods=["GET"])
 app.add_api_route("/api/audits/list", api_list_user_audits, methods=["GET"])
 app.add_api_route("/api/runs/{ts}/status", api_run_status, methods=["GET"])
 app.add_api_route("/api/runs/{ts}/logs", api_run_logs, methods=["GET"])
@@ -72,82 +73,13 @@ app.add_api_route("/setup-project", setup_project, methods=["GET"])
 app.add_api_route("/test-endpoint", test_endpoint, methods=["GET"])
 app.add_api_route("/test-oauth", test_oauth, methods=["GET"])
 app.add_api_route("/health", health_check, methods=["GET"])
+app.add_api_route("/debug/workspace", debug_workspace, methods=["GET"])
 
 # Temporarily create simple wallet auth endpoints
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-# Direct GitHub API endpoints to fix frontend issues
-@app.get("/api/github/branches")
-async def direct_github_branches(repo: str = "TribesByAstrix"):
-    """Direct GitHub branches endpoint for development."""
-    print(f"=== Direct branches endpoint called for repo: {repo} ===")
-    
-    if repo == "TribesByAstrix":
-        return [
-            {
-                'name': 'main',
-                'commit': {
-                    'sha': '19f2ead89d6a639bc8357d90739ddb0600e2e82c',
-                    'url': 'https://api.github.com/repos/astrix-tribes/TribesByAstrix/commits/19f2ead89d6a639bc8357d90739ddb0600e2e82c'
-                },
-                'protected': True
-            },
-            {
-                'name': 'testing',
-                'commit': {
-                    'sha': 'aa9ad7daa9233cc2c39be521efb7083195ff6b8d',
-                    'url': 'https://api.github.com/repos/astrix-tribes/TribesByAstrix/commits/aa9ad7daa9233cc2c39be521efb7083195ff6b8d'
-                },
-                'protected': False
-            },
-            {
-                'name': 'readme-contracts',
-                'commit': {
-                    'sha': 'e0199b529c12ae42264cf2fd383cbbc1fe58f717',
-                    'url': 'https://api.github.com/repos/astrix-tribes/TribesByAstrix/commits/e0199b529c12ae42264cf2fd383cbbc1fe58f717'
-                },
-                'protected': False
-            }
-        ]
-    else:
-        # Default branches for other repos
-        return [
-            {
-                'name': 'main',
-                'commit': {
-                    'sha': 'main-commit',
-                    'url': f'https://api.github.com/repos/dev-user/{repo}/commits/main-commit'
-                },
-                'protected': True
-            }
-        ]
-
-@app.get("/api/github/repos")
-async def direct_github_repos():
-    """Direct GitHub repos endpoint for development."""
-    print(f"=== Direct repos endpoint called ===")
-    
-    return [
-        {
-            'id': 926460700,
-            'name': 'TribesByAstrix',
-            'full_name': 'astrix-tribes/TribesByAstrix',
-            'private': False,
-            'owner': {
-                'login': 'astrix-tribes',
-                'id': 201751947,
-                'avatar_url': 'https://avatars.githubusercontent.com/u/201751947?v=4',
-                'html_url': 'https://github.com/astrix-tribes'
-            },
-            'html_url': 'https://github.com/astrix-tribes/TribesByAstrix',
-            'description': 'Smart contracts for Astrix Tribes ecosystem',
-            'clone_url': 'https://github.com/astrix-tribes/TribesByAstrix.git',
-            'default_branch': 'main',
-            'language': 'Solidity',
-            'updated_at': '2024-12-01T00:00:00Z'
-        }
-    ]
+# Mock endpoints removed - using real GitHub API from views.py instead
 
 @app.post("/api/auth/wallet")
 async def authenticate_wallet_simple(request: Request):

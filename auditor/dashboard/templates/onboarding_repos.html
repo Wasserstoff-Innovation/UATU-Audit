@@ -696,18 +696,20 @@
             if (selected && selected.value) {
                 selectedRepo = JSON.parse(selected.dataset.repo);
                 
-                // Load branches for selected repo
-                await loadBranches(selectedRepo.name);
-                
-                // Show branch selector
+                // Immediately disable continue button and show loading state
+                const continueBtn = document.getElementById('continueBtn');
+                continueBtn.disabled = true;
+                continueBtn.textContent = '⏳ Loading branches...';
                 document.getElementById('branchSelector').style.display = 'block';
                 
-                // Disable continue button until branch is selected
-                document.getElementById('continueBtn').disabled = true;
+                // Load branches for selected repo
+                await loadBranches(selectedRepo.name);
             } else {
                 selectedRepo = null;
                 document.getElementById('branchSelector').style.display = 'none';
-                document.getElementById('continueBtn').disabled = true;
+                const continueBtn = document.getElementById('continueBtn');
+                continueBtn.disabled = true;
+                continueBtn.textContent = '🚀 Continue with Selected Repo';
             }
         });
         
@@ -724,24 +726,30 @@
         
         // Load branches for a repository
         async function loadBranches(repoName) {
+            console.log('Loading branches for repo:', repoName);
             try {
                 const response = await fetch(`/api/github/branches?repo=${encodeURIComponent(repoName)}`);
+                console.log('Branch API response status:', response.status);
                 if (response.ok) {
                     const branches = await response.json();
+                    console.log('Branches loaded:', branches.length);
                     populateBranchDropdown(branches);
                 } else {
                     console.error('Failed to load branches:', await response.text());
                     // Fallback: add main/master branches
+                    console.log('Using fallback branches due to API error');
                     populateBranchDropdown([{name: 'main'}, {name: 'master'}]);
                 }
             } catch (error) {
                 console.error('Error loading branches:', error);
                 // Fallback: add main/master branches
+                console.log('Using fallback branches due to exception');
                 populateBranchDropdown([{name: 'main'}, {name: 'master'}]);
             }
         }
         
         function populateBranchDropdown(branches) {
+            console.log('Populating branch dropdown with', branches.length, 'branches');
             const dropdown = document.getElementById('branchDropdown');
             dropdown.innerHTML = '<option value="">Select a branch...</option>';
             
@@ -752,20 +760,38 @@
                 dropdown.appendChild(option);
             });
             
-            // Auto-select 'main' if it exists
-            const mainBranch = branches.find(b => b.name === 'main');
+            // Auto-select 'main' if it exists, or first branch as fallback
+            const mainBranch = branches.find(b => b.name === 'main') || branches[0];
+            console.log('Auto-selecting branch:', mainBranch?.name);
             if (mainBranch) {
-                dropdown.value = 'main';
-                selectedRepo.branch = 'main';
-                document.getElementById('continueBtn').disabled = false;
+                dropdown.value = mainBranch.name;
+                selectedRepo.branch = mainBranch.name;
+                console.log('Setting selectedRepo.branch to:', mainBranch.name);
+                console.log('selectedRepo after branch set:', selectedRepo);
+                // Enable continue button directly since we have a valid selection
+                const continueBtn = document.getElementById('continueBtn');
+                continueBtn.disabled = false;
+                continueBtn.textContent = '🚀 Continue with Selected Repo';
+                console.log('Continue button enabled:', !continueBtn.disabled);
+                // Also trigger change event for any other handlers
+                dropdown.dispatchEvent(new Event('change'));
             }
         }
         
         // Handle continue button
         document.getElementById('continueBtn').addEventListener('click', () => {
+            console.log('Continue button clicked');
+            console.log('selectedRepo:', selectedRepo);
+            console.log('selectedRepo.branch:', selectedRepo?.branch);
+            
             if (selectedRepo && selectedRepo.branch) {
+                console.log('Conditions met, redirecting to setup-project');
                 localStorage.setItem('selectedRepo', JSON.stringify(selectedRepo));
                 window.location.href = `/setup-project?repo=${selectedRepo.name}&branch=${selectedRepo.branch}`;
+            } else {
+                console.log('Conditions not met for continue');
+                console.log('selectedRepo exists:', !!selectedRepo);
+                console.log('selectedRepo.branch exists:', !!(selectedRepo && selectedRepo.branch));
             }
         });
         

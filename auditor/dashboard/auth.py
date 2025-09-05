@@ -98,7 +98,7 @@ async def github_login(request: Request) -> RedirectResponse:
     params = {
         'client_id': GITHUB_CLIENT_ID,
         'redirect_uri': GITHUB_REDIRECT_URI,
-        'scope': 'user:email read:org',
+        'scope': 'user:email read:org repo',
         'state': state
     }
     

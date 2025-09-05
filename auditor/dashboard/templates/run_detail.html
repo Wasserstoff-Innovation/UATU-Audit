@@ -225,6 +225,11 @@
             color: #e9eef3;
             font-weight: 500;
         }
+        .artifact-value {
+            color: var(--muted);
+            font-family: var(--font-mono);
+            font-size: 14px;
+        }
         .artifact-link {
             color: var(--accent);
             text-decoration: none;
@@ -266,14 +271,38 @@
     <div class="run-container">
         <div class="run-header">
             <div>
-                <div class="run-title" id="run-title">Loading...</div>
-                <div class="run-meta" id="run-meta">Loading run details...</div>
+                <div class="run-title" id="run-title">
+                    {% if audit %}
+                        {{ audit.repo_name }} / {{ audit.branch_name or audit.branch }}
+                    {% else %}
+                        Loading...
+                    {% endif %}
+                </div>
+                <div class="run-meta" id="run-meta">
+                    {% if audit %}
+                        Started: {{ audit.created_at }} | Run ID: {{ audit.id or ts }}
+                    {% else %}
+                        Loading run details...
+                    {% endif %}
+                </div>
+                <div class="run-details" style="margin-top: 8px; font-size: 14px; color: var(--muted);">
+                    <span id="run-user">User: {{ audit.user if audit else 'Loading...' }}</span>
+                    {% if audit and audit.has_tests %}
+                        <span style="margin-left: 20px;">✅ Tests Generated</span>
+                    {% endif %}
+                </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    <div class="progress-fill" id="progress-fill" style="width: {% if audit %}100{% else %}0{% endif %}%"></div>
                 </div>
             </div>
             <div>
-                <div class="status-pill" id="status-pill">Loading</div>
+                <div class="status-pill" id="status-pill">
+                    {% if audit %}
+                        {{ audit.status.title() if audit.status else 'Loading' }}
+                    {% else %}
+                        Loading
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -286,6 +315,43 @@
             </div>
 
             <div class="sidebar">
+                {% if audit and audit.status == 'completed' %}
+                <div class="artifacts-section" style="margin-bottom: 20px;">
+                    <h3 class="section-title" style="margin-bottom: 16px;">📋 Audit Results</h3>
+                    <div class="artifact-item">
+                        <div class="artifact-name">Repository</div>
+                        <div class="artifact-value">{{ audit.repo_name }}</div>
+                    </div>
+                    <div class="artifact-item">
+                        <div class="artifact-name">Branch</div>
+                        <div class="artifact-value">{{ audit.branch_name or audit.branch }}</div>
+                    </div>
+                    <div class="artifact-item">
+                        <div class="artifact-name">Status</div>
+                        <div class="artifact-value" style="color: var(--ok);">✅ {{ audit.status.title() }}</div>
+                    </div>
+                    {% if audit.has_tests %}
+                    <div class="artifact-item">
+                        <div class="artifact-name">Test Generation</div>
+                        <div class="artifact-value" style="color: var(--ok);">✅ Completed</div>
+                    </div>
+                    {% endif %}
+                    <div class="artifact-item">
+                        <div class="artifact-name">Duration</div>
+                        <div class="artifact-value" id="total-duration">Calculating...</div>
+                    </div>
+                    {% if audit.result_path %}
+                    <div class="artifact-item" style="border-top: 1px solid var(--edge); margin-top: 12px; padding-top: 12px;">
+                        <div class="artifact-name">Downloads</div>
+                        <div>
+                            <a href="/download/pdf/{{ audit.id or ts }}" class="artifact-link" style="margin-right: 12px;">📄 PDF Report</a>
+                            <a href="/run/{{ audit.id or ts }}/tests" class="artifact-link">🧪 View Tests</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
                 <div class="logs-section">
                     <div class="logs-header">
                         <h3 class="section-title" style="margin: 0;">Live Logs</h3>
@@ -318,10 +384,16 @@
         let logsInterval;
 
         const phases = [
-            'prepare', 'inventory', 'analysis', 'journey_plan', 
-            'test_synth', 'compile_precheck', 'execute_tests', 
-            'risk', 'report', 'completed'
+            'init', 'analysis', 'test_generation', 'completed'
         ];
+        
+        const phaseNames = {
+            'init': 'Initialize',
+            'analysis': 'Analysis', 
+            'test_generation': 'Test Generation',
+            'completed': 'Completed',
+            'failed': 'Failed'
+        };
 
         async function loadRunStatus() {
             try {
@@ -334,24 +406,56 @@
                 // Stop polling if completed or failed
                 if (status.phase === 'completed' || status.phase === 'failed') {
                     clearInterval(statusInterval);
+                    clearInterval(logsInterval);
+                    console.log('Stopped polling - audit is', status.phase);
                 }
                 
             } catch (error) {
                 console.error('Failed to load run status:', error);
+                // If we get repeated errors, stop polling to prevent infinite loading
+                if (!window.statusErrorCount) window.statusErrorCount = 0;
+                window.statusErrorCount++;
+                
+                if (window.statusErrorCount >= 5) {
+                    console.log('Too many status errors, stopping polling');
+                    clearInterval(statusInterval);
+                    clearInterval(logsInterval);
+                }
             }
         }
 
         function updateRunHeader(status) {
-            document.getElementById('run-title').textContent = `Run ${runId}`;
-            document.getElementById('run-meta').textContent = 
-                `Started: ${new Date(status.started_at).toLocaleString()} | ` +
-                `Elapsed: ${Math.floor(status.elapsed_sec / 60)}m ${status.elapsed_sec % 60}s`;
+            // Only update dynamic parts, keep the repo name and static info as-is
+            const startTime = new Date(status.created_at || status.started_at);
+            const endTime = new Date(status.updated_at);
+            const elapsedMs = endTime - startTime;
+            const elapsedSec = Math.floor(elapsedMs / 1000);
+            const minutes = Math.floor(elapsedSec / 60);
+            const seconds = elapsedSec % 60;
             
-            document.getElementById('progress-fill').style.width = `${status.pct}%`;
+            // Update meta with elapsed time
+            const metaElement = document.getElementById('run-meta');
+            const currentText = metaElement.textContent;
+            if (currentText.includes('Started:')) {
+                // Extract the started part and add elapsed time
+                const startedPart = currentText.split(' | ')[0];
+                metaElement.textContent = `${startedPart} | Elapsed: ${minutes}m ${seconds}s`;
+            }
             
+            // Update progress bar
+            document.getElementById('progress-fill').style.width = `${status.progress_pct || status.pct || 100}%`;
+            
+            // Update total duration in results section
+            const totalDurationEl = document.getElementById('total-duration');
+            if (totalDurationEl) {
+                totalDurationEl.textContent = `${minutes}m ${seconds}s`;
+            }
+            
+            // Update status pill
             const statusPill = document.getElementById('status-pill');
-            statusPill.textContent = status.phase.replace('_', ' ').toUpperCase();
-            statusPill.className = `status-pill status-${status.phase === 'completed' ? 'completed' : 
+            const displayPhase = phaseNames[status.phase] || status.status || status.phase.replace('_', ' ').toUpperCase();
+            statusPill.textContent = displayPhase;
+            statusPill.className = `status-pill status-${status.phase === 'completed' || status.status === 'completed' ? 'completed' : 
                 status.phase === 'failed' ? 'failed' : 'running'}`;
         }
 
@@ -371,7 +475,7 @@
                     iconText = status.phase === 'failed' ? '✗' : '●';
                 }
                 
-                const phaseName = phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const phaseName = phaseNames[phase] || phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
                 
                 return `
                     <div class="timeline-item ${statusClass}">
@@ -409,15 +513,37 @@
                     }).join('');
                     
                     logsContent.innerHTML += logsHtml;
-                    logOffset = data.offset;
+                    logOffset = data.next_offset || data.offset;
                     
                     if (autoScroll) {
                         logsContent.scrollTop = logsContent.scrollHeight;
                     }
+                } else {
+                    // No new logs - check if offset changed to prevent infinite polling
+                    const newOffset = data.next_offset || data.offset;
+                    if (newOffset === logOffset && data.has_more === false) {
+                        console.log('No new logs and no more expected, reducing polling frequency');
+                        // If we're getting the same offset back and no more logs expected,
+                        // we can reduce polling frequency or stop if audit is complete
+                        if (window.statusPollingComplete) {
+                            console.log('Status polling complete and no new logs, stopping logs polling');
+                            clearInterval(logsInterval);
+                        }
+                    }
+                    logOffset = newOffset;
                 }
                 
             } catch (error) {
                 console.error('Failed to load logs:', error);
+                // If we get repeated errors, stop polling to prevent infinite loading
+                if (!window.logsErrorCount) window.logsErrorCount = 0;
+                window.logsErrorCount++;
+                
+                if (window.logsErrorCount >= 5) {
+                    console.log('Too many logs errors, stopping polling');
+                    clearInterval(statusInterval);
+                    clearInterval(logsInterval);
+                }
             }
         }
 
@@ -469,6 +595,37 @@
         // Start polling
         statusInterval = setInterval(loadRunStatus, 2000);
         logsInterval = setInterval(loadLogs, 1000);
+        
+        // Cleanup function to stop polling when page unloads
+        function cleanup() {
+            clearInterval(statusInterval);
+            clearInterval(logsInterval);
+            console.log('Cleaned up polling intervals');
+        }
+        
+        // Add event listeners for cleanup
+        window.addEventListener('beforeunload', cleanup);
+        window.addEventListener('pagehide', cleanup);
+        
+        // Also reset error counters on successful calls
+        function resetErrorCounters() {
+            window.statusErrorCount = 0;
+            window.logsErrorCount = 0;
+        }
+        
+        // Add success handler to reset counters
+        const originalLoadRunStatus = loadRunStatus;
+        loadRunStatus = async function() {
+            try {
+                await originalLoadRunStatus();
+                if (window.statusErrorCount > 0) {
+                    resetErrorCounters();
+                }
+            } catch (error) {
+                throw error; // Re-throw to maintain original behavior
+            }
+        };
+        
     </script>
 </body>
 </html>
