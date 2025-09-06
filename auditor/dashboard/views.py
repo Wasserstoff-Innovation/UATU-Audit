@@ -487,21 +487,26 @@ async def branch_detail(request: Request, project_name: str, branch_name: str):
         'path': project_name
     }
     
+    # Count test files
+    test_count = len(list(branch_dir.rglob("test/*.sol"))) + len(list(branch_dir.rglob("tests/*.sol")))
+    
     branch_info = {
         'name': branch_name,
-        'project': project_info
+        'project': project_info,
+        'test_count': test_count
     }
     
-    # Get test files
+    # Get test files from both test and tests directories
     tests = []
-    test_dir = branch_dir / "test"
-    if test_dir.exists():
-        for test_file in test_dir.glob("*.sol"):
-            tests.append({
-                'name': test_file.stem,
-                'file_path': str(test_file.relative_to(branch_dir)),
-                'full_path': str(test_file)
-            })
+    for dir_name in ["test", "tests"]:
+        test_dir = branch_dir / dir_name
+        if test_dir.exists():
+            for test_file in test_dir.glob("*.sol"):
+                tests.append({
+                    'name': test_file.stem,
+                    'file_path': str(test_file.relative_to(branch_dir)),
+                    'full_path': str(test_file)
+                })
     
     return templates.TemplateResponse("branch_detail.html", {
         "request": request,
@@ -581,13 +586,62 @@ async def api_test_run(request: Request):
         if not all([project_name, branch_name, test_name]):
             return JSONResponse({"error": "Missing required fields"}, status_code=400)
         
-        # TODO: Implement actual test runner integration
-        # For now, just return success
-        return JSONResponse({
-            "success": True, 
-            "message": f"Test {test_name} started",
-            "status": "running"
-        })
+        # Get user workspace and test directory
+        user_workspace = get_user_workspace(user.get('login'))
+        branch_dir = user_workspace / "projects" / project_name / "branches" / branch_name
+        
+        if not branch_dir.exists():
+            return JSONResponse({"error": "Branch directory not found"}, status_code=404)
+        
+        # Find the test file
+        test_file = None
+        for test_dir in ["test", "tests"]:
+            potential_file = branch_dir / test_dir / f"{test_name}.sol"
+            if potential_file.exists():
+                test_file = potential_file
+                break
+        
+        if not test_file:
+            return JSONResponse({"error": f"Test file {test_name}.sol not found"}, status_code=404)
+        
+        # Run forge test for this specific test file
+        import subprocess
+        import tempfile
+        import json
+        
+        try:
+            # Run forge test with specific test file match
+            cmd = ["forge", "test", "--match-path", str(test_file), "-vv"]
+            result = subprocess.run(cmd, cwd=str(branch_dir), capture_output=True, text=True, timeout=300)
+            
+            output = result.stdout + result.stderr
+            success = result.returncode == 0
+            
+            # Parse the output for more detailed results
+            if "PASSED" in output:
+                success = True
+            elif "FAILED" in output:
+                success = False
+            
+            return JSONResponse({
+                "success": success,
+                "output": output,
+                "exit_code": result.returncode,
+                "message": f"Test {test_name} {'passed' if success else 'failed'}"
+            })
+            
+        except subprocess.TimeoutExpired:
+            return JSONResponse({
+                "success": False,
+                "error": "Test execution timed out after 5 minutes",
+                "output": "Test execution timed out"
+            })
+        except subprocess.CalledProcessError as e:
+            return JSONResponse({
+                "success": False,
+                "error": f"Forge command failed: {e}",
+                "output": e.stdout + e.stderr if hasattr(e, 'stdout') else str(e)
+            })
         
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

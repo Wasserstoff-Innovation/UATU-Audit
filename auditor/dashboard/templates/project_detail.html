@@ -26,28 +26,21 @@
   {% endfor %}
 {% endfor %}
 
-<!-- Branches section -->
+<!-- Branches section - 3x2 grid layout -->
 {% if project.branches %}
   {% for branch in project.branches %}
-    {% set branch_count = project.branches|length %}
-    {% if branch_count == 1 %}
-      <!-- Single branch: use 8 columns centered, 4 rows tall -->
-      <div class="grid-cell branch-cell interactive" 
-           style="grid-column:3/11; grid-row:3/7;"
-           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
-    {% elif branch_count == 2 %}
-      <!-- Two branches: 6 columns each -->
-      <div class="grid-cell branch-cell interactive" 
-           style="grid-column:{{ 1 + loop.index0 * 6 }}/{{ 7 + loop.index0 * 6 }}; grid-row:3/6;"
-           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
-    {% else %}
-      <!-- Multiple branches: 4 columns each -->
-      <div class="grid-cell branch-cell interactive" 
-           style="grid-column:{{ 1 + (loop.index0 % 3) * 4 }}/{{ 5 + (loop.index0 % 3) * 4 }}; 
-                  grid-row:{{ 3 + (loop.index0 // 3) * 2 }}/{{ 5 + (loop.index0 // 3) * 2 }};"
-           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
-    {% endif %}
-      <div class="branch-name">{{ branch.name }}</div>
+    {% set col = 1 + (loop.index0 % 3) * 4 %}
+    {% set row = 3 + (loop.index0 // 3) * 2 %}
+    {% set status_color = 'var(--mint-400)' if branch.source_count > 0 else 'var(--ice-400)' %}
+    {% set status_text = 'Active' if branch.source_count > 0 else 'Empty' %}
+    
+    <div class="grid-cell branch-card interactive" 
+         style="grid-column:{{ col }}/{{ col + 3 }}; grid-row:{{ row }}/{{ row + 2 }};"
+         onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
+      <div class="branch-header">
+        <div class="branch-name">{{ branch.name }}</div>
+        <div class="branch-status" style="color: {{ status_color }};">{{ status_text }}</div>
+      </div>
       
       <div class="branch-stats">
         <div class="stat-item">
@@ -55,13 +48,13 @@
             <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
             <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 100 4h2a2 2 0 100-4 1 1 0 100-2H6a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v1h4a1 1 0 110 2H4V5z" clip-rule="evenodd"/>
           </svg>
-          <span class="stat-value">{{ branch.source_count }} contracts</span>
+          <span class="stat-value">{{ branch.source_count }} source files</span>
         </div>
         <div class="stat-item">
           <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
           </svg>
-          <span class="stat-value">{{ branch.test_count }} tests</span>
+          <span class="stat-value">{{ branch.test_count }} test files</span>
         </div>
       </div>
       
@@ -104,7 +97,7 @@
     font-family:var(--font-mono);
   }
   
-  .branch-cell{
+  .branch-cell, .branch-card{
     background:rgba(16, 33, 50, 0.8);
     border:2px solid var(--grid-line);
     padding:20px;
@@ -113,12 +106,30 @@
     position:relative;
     z-index:5;
     box-shadow:0 0 0 1px rgba(16, 33, 50, 0.8);
+    display:flex;
+    flex-direction:column;
   }
   
-  .branch-cell:hover{
+  .branch-cell:hover, .branch-card:hover{
     border-color:var(--mint-400);
     background:rgba(76, 227, 184, 0.05);
     z-index:6;
+  }
+  
+  .branch-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  
+  .branch-status{
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    padding:2px 6px;
+    border-radius:3px;
+    background:rgba(255,255,255,0.1);
   }
   
   .branch-name{

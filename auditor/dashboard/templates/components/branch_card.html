@@ -1,0 +1,32 @@
+<!-- Branch Card Template -->
+<div class="grid-cell branch-card interactive" onclick="viewBranch('{{ project_path }}', '{{ branch.name }}')">
+  <div class="branch-header">
+    <div class="branch-name">{{ branch.name }}</div>
+    <div class="branch-status" style="color: {{ status_color }};">{{ status_text }}</div>
+  </div>
+  
+  <div class="branch-stats">
+    <div class="stat-item">
+      <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 100 4h2a2 2 0 100-4 1 1 0 100-2H6a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v1h4a1 1 0 110 2H4V5z" clip-rule="evenodd"/>
+      </svg>
+      <span class="stat-value">{{ branch.source_count }} source files</span>
+    </div>
+    <div class="stat-item">
+      <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+      </svg>
+      <span class="stat-value">{{ branch.test_count }} test files</span>
+    </div>
+  </div>
+  
+  <div class="branch-actions">
+    <button class="action-btn primary" onclick="event.stopPropagation(); runAudit('{{ branch.name }}')">
+      🤖 Run AI Audit
+    </button>
+    <button class="action-btn" onclick="event.stopPropagation(); viewReport('{{ branch.name }}')">
+      📊 View Report
+    </button>
+  </div>
+</div>

@@ -4,650 +4,386 @@
 
 {% set show_back_button = true %}
 {% set back_url = '/project/' + project.name %}
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+{% block header_content %}
+<!-- Keep header empty to not interfere with back button -->
+{% endblock %}
+
+{% block main_content %}
+<!-- Test Cases Section - Full width -->
+<div class="test-section" style="grid-column:1/13; grid-row:2/9; display:flex; flex-direction:column; margin:0 20px;">
+  <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div style="color:var(--ice-300); font-size:14px;">{{ tests|length }} test files found</div>
+    <button class="action-btn primary" onclick="runAllTests()" {% if tests|length == 0 %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>
+      🚀 Run All Tests
+    </button>
+  </div>
+  
+  <div class="test-table-container" style="flex:1; overflow-y:auto;">
+    <table class="test-table">
+      <thead>
+        <tr>
+          <th>Test Name</th>
+          <th>Category</th>
+          <th>Journey</th>
+          <th>Status</th>
+          <th>Last Run</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="testTableBody">
+        <!-- Test cases will be populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
 {% block extra_styles %}
 <style>
-    :root{
-      /* Color palette */
-      --ink-900:#0B1B2B;
-      --slate-800:#102132;
-      --grid-line:rgba(84, 130, 158, .4);
-      --halo-gold:#F7D046;
-      --mint-400:#4CE3B8;
-      --ice-100:#F2F7FB;
-      --ice-200:#D5E4F0;
-      --ice-300:#9CB4C6;
-      --danger:#E74C3C;
-      --success:#27AE60;
-      --warn:#F39C12;
-      
-      /* Typography */
-      --font-display:'Inter', system-ui, sans-serif;
-      --font-body:'Inter', system-ui, sans-serif;
-      --font-mono:'IBM Plex Mono', monospace;
-    }
-    
-    /* Reset */
-    *{box-sizing:border-box; margin:0; padding:0;}
-    html,body{height:100%; overflow:hidden;}
-    body{
-      font-family:var(--font-body); 
-      color:var(--ice-200); 
-      background:var(--ink-900);
-      -webkit-font-smoothing:antialiased;
-    }
-    
-    /* Grid container - 12x8 grid */
-    .grid-container{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100vw;
-      height:100vh;
-      display:grid;
-      grid-template-columns:repeat(12, 1fr);
-      grid-template-rows:repeat(8, 1fr);
-      gap:2px;
-    }
-    
-    /* Base grid cell */
-    .grid-cell{
-      background:rgba(16, 33, 50, 0.2);
-      border:1px solid var(--grid-line);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      overflow:hidden;
-      transition:all 0.2s ease;
-      position:relative;
-    }
-    
-    /* Interactive hover effects */
-    .grid-cell.interactive:hover{
-      border-color:var(--halo-gold);
-      border-width:2px;
-      transform:scale(1.01);
-      z-index:10;
-      box-shadow:0 0 15px rgba(247,208,70,.3);
-      cursor:pointer;
-    }
-    
-    /* Logo cell - uses common styling from grid-system.css */
-    
-    /* Branch header */
-    .branch-header{
-      grid-column:3/9;
-      grid-row:1/2;
-      flex-direction:column;
-      justify-content:center;
-      align-items:flex-start;
-      padding:20px;
-    }
-    
-    .branch-title{
-      font-size:20px;
-      font-weight:700;
-      color:var(--ice-100);
-      margin-bottom:4px;
-    }
-    
-    .branch-breadcrumb{
-      font-size:12px;
-      color:var(--ice-300);
-      font-family:var(--font-mono);
-    }
-    
-    /* Back button */
-    .back-cell{
-      grid-column:9/10;
-      grid-row:1/2;
-      background:rgba(16, 33, 50, 0.4);
-      text-decoration:none;
-      color:var(--ice-300);
+  /* Test Cases Section */
+  .test-section{
+    background:rgba(16, 33, 50, 0.4);
+    border:none;
+    padding:20px;
+    border-radius:6px;
+    height:calc(100% - 40px);
+  }
+  
+  .section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+  }
+  
+  .test-table-container{
+    flex:1;
+    overflow-y:auto;
+    height:calc(100% - 60px);
+  }
+  
+  .test-table{
+    width:100%;
+    border-collapse:collapse;
+    background:rgba(16, 33, 50, 0.6);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  
+  .test-table th,
+  .test-table td{
+    padding:12px 16px;
+    text-align:left;
+    border-bottom:1px solid var(--grid-line);
+  }
+  
+  .test-table th{
+    background:rgba(16, 33, 50, 0.8);
+    color:var(--ice-100);
+    font-weight:600;
       font-size:14px;
-      font-weight:600;
-    }
-    
-    .back-cell:hover{
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-    
-    /* Add test button */
-    .add-test-cell{
-      grid-column:10/11;
-      grid-row:1/2;
-      background:var(--halo-gold);
-      color:var(--ink-900);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  
+  .test-table td{
+    color:var(--ice-200);
       font-size:13px;
-      font-weight:600;
-      cursor:pointer;
-      border:2px solid var(--halo-gold);
-    }
-    
-    .add-test-cell:hover{
-      transform:translateY(-2px);
-      box-shadow:0 4px 12px rgba(247,208,70,0.4);
-    }
-    
-    /* User info */
-    .user-cell{
-      grid-column:11/13;
-      grid-row:1/2;
-      background:rgba(16, 33, 50, 0.4);
-      font-size:13px;
-      justify-content:space-around;
-      padding:12px;
-    }
-    
-    /* Test file cells */
-    .test-cell{
-      background:rgba(16, 33, 50, 0.4);
-      border:1px solid var(--grid-line);
-      padding:20px;
-      align-items:flex-start;
-      justify-content:flex-start;
-      position:relative;
-    }
-    
-    .test-cell:hover{
-      border-color:var(--mint-400);
-      background:rgba(76, 227, 184, 0.05);
-    }
-    
-    .test-name{
-      font-size:16px;
-      font-weight:600;
-      color:var(--ice-100);
-      margin-bottom:8px;
-      width:100%;
-    }
-    
-    .test-file{
-      font-family:var(--font-mono);
-      font-size:12px;
-      color:var(--ice-300);
-      margin-bottom:16px;
+  }
+  
+  .test-table tr:hover{
+    background:rgba(76, 227, 184, 0.05);
+  }
+  
+  .status-badge{
+    padding:4px 8px;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    display:inline-block;
+  }
+  
+  .status-pending{
+    background:rgba(243, 156, 18, 0.2);
+    color:var(--warn);
+  }
+  
+  .status-running{
+    background:rgba(52, 152, 219, 0.2);
+    color:#3498db;
+  }
+  
+  .status-passed{
+    background:rgba(39, 174, 96, 0.2);
+    color:var(--success);
+  }
+  
+  .status-failed{
+    background:rgba(231, 76, 60, 0.2);
+    color:var(--danger);
     }
     
     .test-actions{
       display:flex;
       gap:8px;
-      width:100%;
-      margin-top:auto;
     }
     
-    .action-btn{
+  .test-btn{
       background:transparent;
       border:1px solid var(--grid-line);
       color:var(--ice-300);
       padding:4px 8px;
-      border-radius:4px;
+    border-radius:3px;
       font-size:11px;
-      font-weight:500;
       cursor:pointer;
       transition:all 0.2s;
-      text-decoration:none;
-      display:inline-block;
-    }
-    
-    .action-btn.primary{
-      background:var(--mint-400);
+  }
+  
+  .test-btn:hover{
+    border-color:var(--mint-400);
+    color:var(--mint-400);
+  }
+  
+  .test-btn.primary{
+    background:var(--halo-gold);
       color:var(--ink-900);
       border:none;
       font-weight:600;
     }
     
-    .action-btn.primary:hover{
+  .test-btn.primary:hover{
       transform:translateY(-1px);
-      box-shadow:0 2px 8px rgba(76,227,184,0.4);
-    }
-    
-    .action-btn.danger{
-      border-color:var(--danger);
-      color:var(--danger);
-    }
-    
-    .action-btn.danger:hover{
-      background:var(--danger);
-      color:var(--ice-100);
-    }
-    
-    .action-btn:hover{
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-    
-    /* Empty state */
+    box-shadow:0 2px 8px rgba(247,208,70,0.3);
+  }
+  
     .empty-state{
-      grid-column:5/9;
-      grid-row:4/6;
+    display:flex;
       flex-direction:column;
-      padding:40px;
-      text-align:center;
-    }
-    
-    /* Test editor overlay */
-    .test-editor{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100vw;
-      height:100vh;
-      background:rgba(11, 27, 43, 0.95);
-      backdrop-filter:blur(10px);
-      display:none;
       align-items:center;
       justify-content:center;
-      z-index:1000;
-    }
-    
-    .test-editor.active{
-      display:flex;
-    }
-    
-    .editor-panel{
-      width:80%;
-      max-width:900px;
-      height:80%;
-      background:var(--slate-800);
-      border:2px solid var(--grid-line);
-      border-radius:8px;
-      padding:30px;
-      display:flex;
-      flex-direction:column;
-      gap:20px;
-    }
-    
-    .editor-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    
-    .editor-title{
-      font-size:20px;
+    height:200px;
+    color:var(--ice-300);
+  }
+  
+  .empty-state-icon{
+    font-size:48px;
+    margin-bottom:16px;
+    opacity:0.3;
+  }
+  
+  .empty-state-text{
+    font-size:16px;
       font-weight:600;
-      color:var(--ice-100);
-    }
-    
-    .close-btn{
-      background:transparent;
-      border:1px solid var(--grid-line);
-      color:var(--ice-300);
-      padding:6px 12px;
-      border-radius:4px;
-      cursor:pointer;
-      font-size:13px;
-    }
-    
-    .close-btn:hover{
-      border-color:var(--danger);
-      color:var(--danger);
-    }
-    
-    .editor-form{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap:16px;
-    }
-    
-    .form-row{
-      display:flex;
-      gap:16px;
-    }
-    
-    .form-group{
-      flex:1;
-    }
-    
-    .form-label{
-      display:block;
-      font-size:13px;
-      color:var(--ice-300);
-      margin-bottom:6px;
-      font-weight:500;
-    }
-    
-    .form-input{
-      width:100%;
-      background:var(--ink-900);
-      border:1px solid var(--grid-line);
-      color:var(--ice-100);
-      padding:8px 12px;
-      border-radius:4px;
-      font-family:var(--font-mono);
+    margin-bottom:8px;
+  }
+  
+  .empty-state-subtext{
       font-size:14px;
-    }
-    
-    .form-input:focus{
-      border-color:var(--mint-400);
-      outline:none;
-    }
-    
-    .code-editor{
-      flex:1;
-      background:var(--ink-900);
-      border:1px solid var(--grid-line);
-      color:var(--ice-100);
-      padding:16px;
-      border-radius:4px;
-      font-family:var(--font-mono);
-      font-size:13px;
-      line-height:1.5;
-      resize:none;
-    }
-    
-    .code-editor:focus{
-      border-color:var(--mint-400);
-      outline:none;
-    }
-    
-    .editor-actions{
-      display:flex;
-      gap:12px;
-      justify-content:flex-end;
-    }
-    
-    .btn{
-      background:transparent;
-      border:1px solid var(--grid-line);
-      color:var(--ice-300);
-      padding:8px 16px;
-      border-radius:4px;
-      font-size:14px;
-      font-weight:500;
-      cursor:pointer;
-      transition:all 0.2s;
-    }
-    
-    .btn.primary{
-      background:var(--halo-gold);
-      color:var(--ink-900);
-      border:none;
-      font-weight:600;
-    }
-    
-    .btn.primary:hover{
-      transform:translateY(-2px);
-      box-shadow:0 4px 12px rgba(247,208,70,0.4);
-    }
-    
-    .btn:hover{
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-  </style>
-{% endblock %}
-{% block header_content %}
-<!-- Branch title in grid cells 3-8 -->
-<div class="grid-cell" style="grid-column:3/9; grid-row:1/2; display:flex; align-items:center; padding-left:20px;">
-  <div>
-    <h1 class="branch-title" style="color:var(--ice-100); font-size:24px; font-weight:700; margin:0;">{{ branch.name }}</h1>
-    <div class="branch-breadcrumb" style="color:var(--ice-300); font-size:12px; margin-top:4px;">{{ project.name }} / {{ branch.name }}</div>
-  </div>
-</div>
-<!-- Menu cells for spacing -->
-<div class="grid-cell menu-cell" style="grid-column:9/10; grid-row:1/2;"></div>
-<div class="grid-cell menu-cell" style="grid-column:10/11; grid-row:1/2;"></div>
+    opacity:0.7;
+  }
+</style>
 {% endblock %}
 
-{% block main_content %}
-  <div class="grid-container">
-    
-    <!-- Back button -->
-    <a href="/project/{{ project.path }}" class="grid-cell back-cell interactive">
-      ← Back
-    </a>
-    
-    <!-- Add test button -->
-    <div class="grid-cell add-test-cell interactive" onclick="openTestEditor()">
-      + Add Test
-    </div>
-    
-    <!-- User info -->
-    <div class="grid-cell user-cell">
-      {% if user %}
-      <div style="font-family:var(--font-mono); color:var(--mint-400); font-size:12px;">
-        {{ user.wallet_address[:10] if user.wallet_address else user.login }}...
-      </div>
-      {% endif %}
-    </div>
-    
-    <!-- Test files section -->
-    {% if tests %}
-      {% for test in tests %}
-        <!-- Test cell (3 columns wide, 2 rows tall) -->
-        <div class="grid-cell test-cell interactive" 
-             style="grid-column:{{ 1 + (loop.index0 % 4) * 3 }}/{{ 4 + (loop.index0 % 4) * 3 }}; 
-                    grid-row:{{ 2 + (loop.index0 // 4) * 2 }}/{{ 4 + (loop.index0 // 4) * 2 }};"
-             onclick="editTest('{{ test.name }}')">
-          <div class="test-name">{{ test.name }}</div>
-          <div class="test-file">{{ test.file_path }}</div>
-          
+{% block scripts %}
+<script>
+  // Use real test files from backend
+  const realTests = {{ tests | tojson if tests else '[]' | safe }};
+  console.log('Real tests from backend:', realTests);
+  
+  // Convert real test files to test cases with proper structure
+  const testCases = realTests.map((test, index) => ({
+    id: `test_${test.name}`,
+    name: test.name,
+    category: 'Solidity Test',
+    journey: 'Test Suite',
+    status: 'pending',
+    lastRun: null,
+    filePath: test.file_path,
+    fullPath: test.full_path,
+    description: `Solidity test file: ${test.file_path}`,
+    log: null
+  }));
+
+  function renderTestTable() {
+    const tbody = document.getElementById('testTableBody');
+    if (!tbody) return;
+
+    if (testCases.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">
+            <div class="empty-state-icon">🧪</div>
+            <div class="empty-state-text">No test files found</div>
+            <div class="empty-state-subtext">Add .sol test files to the test/ or tests/ directory</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = testCases.map(test => `
+      <tr>
+        <td>
+          <div style="font-weight:600; color:var(--ice-100);">${test.name}</div>
+          <div style="font-size:11px; color:var(--ice-300); margin-top:2px;">${test.description}</div>
+        </td>
+        <td>
+          <span style="padding:2px 6px; background:rgba(247, 208, 70, 0.1); color:var(--halo-gold); border-radius:3px; font-size:11px; font-weight:600;">
+            ${test.category}
+          </span>
+        </td>
+        <td>
+          <span style="padding:2px 6px; background:rgba(76, 227, 184, 0.1); color:var(--mint-400); border-radius:3px; font-size:11px; font-weight:600;">
+            ${test.journey}
+          </span>
+        </td>
+        <td>
+          <span class="status-badge status-${test.status}">
+            ${test.status.toUpperCase()}
+          </span>
+        </td>
+        <td style="color:var(--ice-300); font-size:12px;">
+          ${test.lastRun || 'Never'}
+        </td>
+        <td>
           <div class="test-actions">
-            <button class="action-btn" onclick="event.stopPropagation(); editTest('{{ test.name }}')">
-              Edit
+            <button class="test-btn primary" onclick="runTest('${test.id}')">
+              ▶ Run
             </button>
-            <button class="action-btn primary" onclick="event.stopPropagation(); runTest('{{ test.name }}')">
-              Run
+            <button class="test-btn" onclick="viewTestDetails('${test.id}')">
+              👁 View
             </button>
-            <button class="action-btn danger" onclick="event.stopPropagation(); deleteTest('{{ test.name }}')">
-              Delete
-            </button>
+            ${test.log ? `<button class="test-btn" onclick="viewTestLog('${test.id}')">📋 Log</button>` : ''}
           </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <div class="grid-cell empty-state">
-        <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🧪</div>
-        <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">
-          No test cases
-        </div>
-        <div style="font-size:14px; color:var(--ice-300); margin-bottom:20px;">
-          Create your first test case for this branch
-        </div>
-        <div class="btn primary" onclick="openTestEditor()">Create Test</div>
-      </div>
-    {% endif %}
-  </div>
-  
-  <!-- Test editor overlay -->
-  <div class="test-editor" id="testEditor">
-    <div class="editor-panel">
-      <div class="editor-header">
-        <h2 class="editor-title" id="editorTitle">Create Test Case</h2>
-        <button class="close-btn" onclick="closeTestEditor()">✕</button>
-      </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function runTest(testId) {
+    const test = testCases.find(t => t.id === testId);
+    if (!test) return;
+
+    // Update status to running
+    test.status = 'running';
+    test.lastRun = new Date().toLocaleString();
+    renderTestTable();
+
+    try {
+      // Make API call to run the actual test
+      const response = await fetch('/api/test/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project: '{{ project.name }}',
+          branch: '{{ branch.name }}',
+          test: test.name
+        })
+      });
+
+      const result = await response.json();
       
-      <form class="editor-form" id="testForm">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Test Name</label>
-            <input type="text" class="form-input" id="testName" placeholder="e.g., TestOwnershipTransfer">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Target Contract</label>
-            <input type="text" class="form-input" id="targetContract" placeholder="e.g., MyContract">
-          </div>
-        </div>
-        
-        <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
-          <label class="form-label">Test Code</label>
-          <textarea class="code-editor" id="testCode" placeholder="// Write your Solidity test code here...">// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-import "forge-std/Test.sol";
-
-contract TestExample is Test {
-    function setUp() public {
-        // Setup code
-    }
-    
-    function test_Example() public {
-        // Test code
-        assertTrue(true);
-    }
-}</textarea>
-        </div>
-        
-        <div class="editor-actions">
-          <button type="button" class="btn" onclick="closeTestEditor()">Cancel</button>
-          <button type="button" class="btn primary" onclick="saveTest()">Save Test</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  
-  <script>
-    let currentTest = null;
-    
-    function openTestEditor(testName = null) {
-      const editor = document.getElementById('testEditor');
-      const title = document.getElementById('editorTitle');
-      
-      if (testName) {
-        title.textContent = 'Edit Test Case';
-        currentTest = testName;
-        // TODO: Load test data
+      if (response.ok) {
+        test.status = result.success ? 'passed' : 'failed';
+        test.log = result.output || result.error || 'No output available';
       } else {
-        title.textContent = 'Create Test Case';
-        currentTest = null;
-        // Clear form
-        document.getElementById('testName').value = '';
-        document.getElementById('targetContract').value = '';
-        document.getElementById('testCode').value = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+        test.status = 'failed';
+        test.log = `Error: ${result.error || 'Test execution failed'}`;
+      }
+    } catch (error) {
+      test.status = 'failed';
+      test.log = `Error: ${error.message}`;
+    }
 
-import "forge-std/Test.sol";
+    renderTestTable();
+  }
 
-contract TestExample is Test {
-    function setUp() public {
-        // Setup code
+  function runAllTests() {
+    if (testCases.length === 0) {
+      alert('No test files found. Add .sol test files to the test/ or tests/ directory.');
+      return;
     }
     
-    function test_Example() public {
-        // Test code
-        assertTrue(true);
-    }
-}`;
-      }
-      
-      editor.classList.add('active');
-    }
-    
-    function closeTestEditor() {
-      const editor = document.getElementById('testEditor');
-      editor.classList.remove('active');
-      currentTest = null;
-    }
-    
-    function editTest(testName) {
-      openTestEditor(testName);
-    }
-    
-    async function saveTest() {
-      const testName = document.getElementById('testName').value;
-      const targetContract = document.getElementById('targetContract').value;
-      const testCode = document.getElementById('testCode').value;
-      
-      if (!testName || !testCode) {
-        alert('Please fill in test name and code');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/test/save', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            project: '{{ project.path }}',
-            branch: '{{ branch.name }}',
-            name: testName,
-            target_contract: targetContract,
-            code: testCode,
-            existing: currentTest
-          })
-        });
-        
-        if (response.ok) {
-          alert(currentTest ? 'Test updated successfully!' : 'Test created successfully!');
-          closeTestEditor();
-          window.location.reload();
-        } else {
-          const error = await response.json();
-          alert('Failed to save test: ' + (error.detail || 'Unknown error'));
+    if (confirm('Run all test cases? This may take several minutes.')) {
+      testCases.forEach(test => {
+        if (test.status !== 'running') {
+          runTest(test.id);
         }
-      } catch (error) {
-        alert('Error saving test: ' + error.message);
-      }
+      });
     }
-    
-    async function runTest(testName) {
-      if (confirm(`Run test ${testName}?`)) {
-        try {
-          const response = await fetch('/api/test/run', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              project: '{{ project.path }}',
-              branch: '{{ branch.name }}',
-              test: testName
-            })
-          });
-          
-          if (response.ok) {
-            alert('Test started! Check console for output.');
-          } else {
-            alert('Failed to run test');
-          }
-        } catch (error) {
-          alert('Error running test: ' + error.message);
-        }
-      }
-    }
-    
-    async function deleteTest(testName) {
-      if (confirm(`Delete test ${testName}? This cannot be undone.`)) {
-        try {
-          const response = await fetch('/api/test/delete', {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              project: '{{ project.path }}',
-              branch: '{{ branch.name }}',
-              test: testName
-            })
-          });
-          
-          if (response.ok) {
-            alert('Test deleted successfully!');
-            window.location.reload();
-          } else {
-            alert('Failed to delete test');
-          }
-        } catch (error) {
-          alert('Error deleting test: ' + error.message);
-        }
-      }
-    }
-    
-    // Close editor with Escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closeTestEditor();
-      }
+  }
+
+  function viewTestDetails(testId) {
+    const test = testCases.find(t => t.id === testId);
+    if (!test) return;
+
+    alert(`Test Details:\n\nName: ${test.name}\nCategory: ${test.category}\nJourney: ${test.journey}\nStatus: ${test.status}\nDescription: ${test.description}`);
+  }
+
+  function viewTestLog(testId) {
+    const test = testCases.find(t => t.id === testId);
+    if (!test || !test.log) return;
+
+    // Create a modal-like popup for the log
+    const logWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    logWindow.document.write(`
+      <html>
+        <head>
+          <title>Test Log - ${test.name}</title>
+          <style>
+            body { 
+              font-family: 'IBM Plex Mono', monospace; 
+              background: #0B1B2B; 
+              color: #F2F7FB; 
+              padding: 20px; 
+              margin: 0;
+              line-height: 1.6;
+            }
+            .header { 
+              border-bottom: 2px solid #4CE3B8; 
+              padding-bottom: 10px; 
+              margin-bottom: 20px; 
+            }
+            .log-content { 
+              white-space: pre-wrap; 
+              background: rgba(16, 33, 50, 0.6); 
+              padding: 15px; 
+              border-radius: 6px; 
+              border: 1px solid rgba(84, 130, 158, 0.4);
+            }
+            .test-info {
+              background: rgba(76, 227, 184, 0.1);
+              padding: 10px;
+              border-radius: 4px;
+              margin-bottom: 15px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Test Log: ${test.name}</h1>
+            <div class="test-info">
+              <strong>Category:</strong> ${test.category} | 
+              <strong>Journey:</strong> ${test.journey} | 
+              <strong>Status:</strong> ${test.status.toUpperCase()} | 
+              <strong>Last Run:</strong> ${test.lastRun || 'Never'}
+            </div>
+          </div>
+          <div class="log-content">${test.log}</div>
+        </body>
+      </html>
+    `);
+    logWindow.document.close();
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    renderTestTable();
     });
   </script>
 {% endblock %}

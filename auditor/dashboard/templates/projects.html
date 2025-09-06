@@ -10,10 +10,9 @@
 <!-- Menu cells for spacing -->
 <div class="grid-cell menu-cell" style="grid-column:7/8; grid-row:1/2;"></div>
 <div class="grid-cell menu-cell" style="grid-column:8/9; grid-row:1/2;"></div>
-<!-- Add New Project button in grid cells 9-10 -->
-<div class="grid-cell" style="grid-column:9/11; grid-row:1/2; display:flex; align-items:center; justify-content:center;">
-  <a href="/onboarding/repos" class="action-btn" style="background:var(--halo-gold); color:var(--ink-900); padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; transition:all 0.2s;">+ Add New Project</a>
-</div>
+<!-- Menu cells for spacing -->
+<div class="grid-cell menu-cell" style="grid-column:9/10; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:10/11; grid-row:1/2;"></div>
 {% endblock %}
 
 {% block main_content %}
@@ -40,11 +39,30 @@
     padding:20px;
     align-items:flex-start;
     justify-content:flex-start;
+    display:flex;
+    flex-direction:column;
   }
   
   .project-cell:hover{
     border-color:var(--mint-400);
     background:rgba(76, 227, 184, 0.05);
+  }
+  
+  /* Add project card styles */
+  .add-project-card{
+    background:rgba(16, 33, 50, 0.2);
+    border:2px dashed var(--grid-line);
+    padding:20px;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:all 0.2s ease;
+  }
+  
+  .add-project-card:hover{
+    border-color:var(--halo-gold);
+    background:rgba(255, 193, 7, 0.05);
+    transform:scale(1.02);
   }
   
   .project-name{
@@ -164,11 +182,12 @@
   
   function renderProjects() {
     // Instead of overlay, find and replace specific grid cells
-    // Projects will merge 3x1 grid areas starting from row 3 (3 columns, 1 row)
+    // Projects will be arranged horizontally (side by side) starting from row 3
     let col = 1;
     let row = 3;
     
-    projectsData.forEach((project, index) => {
+    for (let index = 0; index < projectsData.length; index++) {
+      const project = projectsData[index];
       // Find the first grid cell in this 3x1 area and replace it with project content
       const targetCell = document.querySelector(`div[style*="grid-column:${col}/${col+1}"][style*="grid-row:${row}/${row+1}"]`);
       if (targetCell) {
@@ -218,14 +237,17 @@
           }
         }
         
+        // Use template for project card
         targetCell.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-            <div class="project-name">${project.owner_repo}</div>
-            <div style="font-size:10px; color:${riskColor}; font-weight:600; text-transform:uppercase;">${riskLevel}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div class="project-name" style="font-size:18px;">${project.owner_repo}</div>
+            <div style="font-size:10px; color:${riskColor}; font-weight:600; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:rgba(255,255,255,0.1);">${riskLevel}</div>
           </div>
-          <div class="project-id">ID: ${project.id}</div>
-          <div style="font-size:11px; color:var(--ice-300); margin-bottom:12px;">Last scan: ${lastScan}</div>
-          <div class="project-stats">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:11px; color:var(--ice-300);">ID: ${project.id}</div>
+            <div style="font-size:11px; color:var(--ice-300);">Last scan: ${lastScan}</div>
+          </div>
+          <div class="project-stats" style="display:flex; justify-content:space-between; gap:12px;">
             <div class="stat-item">
               <div class="stat-value">${contractCount}</div>
               <div class="stat-label">Contracts</div>
@@ -241,18 +263,53 @@
           </div>
         `;
         
+        // Add click handler for project card
         targetCell.onclick = () => {
           window.location.href = `/project/${encodeURIComponent(project.id)}`;
         };
       }
       
-      // Move to next position
+      // Move to next position (next column, wrap to next row if needed)
       col += 3;
-      if (col > 10) {
+      if (col > 10) { // If we exceed the grid width
         col = 1;
-        row += 2;
+        row += 1; // Move to next row
+        if (row > 8) break; // Stop if we exceed grid height
       }
-    });
+    }
+    
+    // Add "Add New Project" card after all projects
+    if (row <= 8) {
+      const addProjectCell = document.querySelector(`div[style*="grid-column:${col}/${col+1}"][style*="grid-row:${row}/${row+1}"]`);
+      if (addProjectCell) {
+        // Transform this cell into an add project cell that spans 3x1
+        addProjectCell.style.gridColumn = `${col}/${col+3}`;
+        addProjectCell.style.gridRow = `${row}/${row+1}`;
+        addProjectCell.className = 'grid-cell add-project-card interactive';
+        
+        // Hide the other cells that are now covered by this merged cell
+        for (let c = col; c < col + 3; c++) {
+          if (c !== col) { // Skip the main cell we're using
+            const cellToHide = document.querySelector(`div[style*="grid-column:${c}/${c+1}"][style*="grid-row:${row}/${row+1}"]`);
+            if (cellToHide) {
+              cellToHide.style.display = 'none';
+            }
+          }
+        }
+        
+        addProjectCell.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center;">
+            <div style="font-size:48px; color:var(--halo-gold); margin-bottom:12px;">+</div>
+            <div style="font-size:16px; font-weight:600; color:var(--ice-100); margin-bottom:4px;">Add New Project</div>
+            <div style="font-size:12px; color:var(--ice-300);">Connect GitHub repository</div>
+          </div>
+        `;
+        
+        addProjectCell.onclick = () => {
+          window.location.href = '/onboarding/repos';
+        };
+      }
+    }
   }
   
   // Check for audit in progress
