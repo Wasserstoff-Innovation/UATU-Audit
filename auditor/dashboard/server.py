@@ -26,7 +26,8 @@ from .views import (
     download_pdf, download_portfolio_pdf, download_csv,
     health_check, debug_workspace, landing_page, onboarding_repos, api_github_repos, api_github_branches, 
     api_audit_status, api_quick_status, api_list_user_audits, test_endpoint, test_oauth, setup_project,
-    api_run_status, api_run_logs, api_projects, api_project_runs
+    api_run_status, api_run_logs, api_projects, api_project_runs,
+    project_detail, branch_detail, api_test_save, api_test_run, api_test_delete
 )
 # Temporarily disable wallet auth imports until dependencies are installed
 # from .wallet_auth import authenticate_wallet, link_github_to_wallet, logout_user
@@ -74,6 +75,15 @@ app.add_api_route("/test-endpoint", test_endpoint, methods=["GET"])
 app.add_api_route("/test-oauth", test_oauth, methods=["GET"])
 app.add_api_route("/health", health_check, methods=["GET"])
 app.add_api_route("/debug/workspace", debug_workspace, methods=["GET"])
+
+# Project navigation routes
+app.add_api_route("/project/{project_name}", project_detail, methods=["GET"])
+app.add_api_route("/project/{project_name}/branch/{branch_name}", branch_detail, methods=["GET"])
+
+# Test case API routes
+app.add_api_route("/api/test/save", api_test_save, methods=["POST"])
+app.add_api_route("/api/test/run", api_test_run, methods=["POST"])
+app.add_api_route("/api/test/delete", api_test_delete, methods=["DELETE"])
 
 # Temporarily create simple wallet auth endpoints
 from fastapi import HTTPException

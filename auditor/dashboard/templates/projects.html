@@ -1,359 +1,467 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uatu Projects</title>
-    <link rel="stylesheet" href="/static/landing.css">
-    <style>
-        .projects-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .projects-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .projects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-            gap: 20px;
-        }
-        .project-card {
-            background: var(--panel);
-            border: 1px solid var(--edge);
-            border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .project-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-        .project-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--glow);
-            margin-bottom: 10px;
-        }
-        .project-id {
-            font-family: monospace;
-            color: var(--muted);
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        .branches-list {
-            margin-bottom: 15px;
-        }
-        .branch-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: rgba(31,59,87,0.3);
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-        .branch-name {
-            font-weight: 600;
-            color: #e9eef3;
-        }
-        .branch-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-completed { background: var(--ok); color: white; }
-        .status-running { background: var(--warn); color: #333; }
-        .status-failed { background: var(--danger); color: white; }
-        .status-pending { background: var(--muted); color: white; }
-        .score {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--glow);
-        }
-        .delta {
-            font-size: 12px;
-            margin-left: 8px;
-        }
-        .delta-up { color: var(--danger); }
-        .delta-down { color: var(--ok); }
-        .start-audit-btn {
-            background: linear-gradient(180deg, #203b57, #162b40);
-            border: 1px solid #406285;
-            color: #e9eef3;
-            padding: 8px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .start-audit-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--muted);
-        }
-        .empty-state h3 {
-            color: var(--glow);
-            margin-bottom: 10px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--muted);
-        }
-    </style>
-</head>
-<body class="uatu">
-    <div class="bg-halo"></div>
-    <div class="bg-noise"></div>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Projects — UatuAudit</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      /* Color palette */
+      --ink-900:#0B1B2B;
+      --slate-800:#102132;
+      --grid-line:rgba(84, 130, 158, .4);
+      --halo-gold:#F7D046;
+      --mint-400:#4CE3B8;
+      --ice-100:#F2F7FB;
+      --ice-200:#D5E4F0;
+      --ice-300:#9CB4C6;
+      --danger:#E74C3C;
+      --success:#27AE60;
+      
+      /* Typography */
+      --font-display:'Inter', system-ui, sans-serif;
+      --font-body:'Inter', system-ui, sans-serif;
+      --font-mono:'IBM Plex Mono', monospace;
+    }
     
-    <nav class="nav">
-        <div class="brand">
-            <img src="/static/uatu-logo.svg" alt="Uatu" class="logo">
-            <span class="wordmark">UatuAudit</span>
-        </div>
-        <div>
-            <a href="/">Dashboard</a>
-            <a href="/projects" class="btn primary">Projects</a>
-            <a href="/portfolio" class="btn ghost">Portfolio</a>
-        </div>
-    </nav>
-
-    <div class="projects-container">
-        <div class="projects-header">
-            <h1>Projects</h1>
-            <a href="/onboard" class="btn primary">Start New Audit</a>
-        </div>
-
-        <!-- Processing banner for new audits -->
-        <div id="processingBanner" style="display: none; background: linear-gradient(90deg, rgba(76, 227, 184, 0.1) 0%, rgba(76, 227, 184, 0.05) 100%); border: 1px solid #4CE3B8; border-radius: 12px; padding: 16px; margin-bottom: 20px; align-items: center; gap: 12px;">
-            <div style="width: 20px; height: 20px; border: 3px solid rgba(76, 227, 184, 0.3); border-top-color: #4CE3B8; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <div style="color: #e9eef3; font-size: 14px;">Setting up new audit... The project will appear here once processing begins.</div>
-        </div>
-
-        <div id="projects-content">
-            <div class="loading">Loading projects...</div>
-        </div>
+    /* Reset */
+    *{box-sizing:border-box; margin:0; padding:0;}
+    html,body{height:100%; overflow:hidden;}
+    body{
+      font-family:var(--font-body); 
+      color:var(--ice-200); 
+      background:var(--ink-900);
+      -webkit-font-smoothing:antialiased;
+    }
+    
+    /* Grid container - 12x8 grid */
+    .grid-container{
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100vh;
+      display:grid;
+      grid-template-columns:repeat(12, 1fr);
+      grid-template-rows:repeat(8, 1fr);
+      gap:2px;
+    }
+    
+    /* Base grid cell */
+    .grid-cell{
+      background:rgba(16, 33, 50, 0.2);
+      border:1px solid var(--grid-line);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      overflow:hidden;
+      transition:all 0.2s ease;
+      position:relative;
+    }
+    
+    /* Interactive hover effects */
+    .grid-cell.interactive:hover{
+      border-color:var(--halo-gold);
+      border-width:2px;
+      transform:scale(1.01);
+      z-index:10;
+      box-shadow:0 0 15px rgba(247,208,70,.3);
+      cursor:pointer;
+    }
+    
+    /* Logo cell - top left */
+    .logo-cell{
+      grid-column:1/3;
+      grid-row:1/2;
+      background:transparent;
+      border:2px solid var(--grid-line);
+      cursor:pointer;
+    }
+    
+    .logo-cell img{
+      width:80px;
+      height:80px;
+    }
+    
+    /* User info cell */
+    .user-cell{
+      grid-column:10/13;
+      grid-row:1/2;
+      background:rgba(16, 33, 50, 0.4);
+      font-size:13px;
+      justify-content:space-around;
+      padding:12px;
+    }
+    
+    .user-address{
+      font-family:var(--font-mono);
+      color:var(--mint-400);
+      font-size:12px;
+      font-weight:500;
+    }
+    
+    .logout-btn{
+      background:transparent;
+      color:var(--ice-300);
+      border:1px solid var(--grid-line);
+      padding:4px 12px;
+      border-radius:4px;
+      font-size:12px;
+      cursor:pointer;
+      transition:all 0.2s;
+      text-decoration:none;
+      display:inline-block;
+      margin-top:8px;
+    }
+    
+    .logout-btn:hover{
+      border-color:var(--danger);
+      color:var(--danger);
+    }
+    
+    /* Navigation cells */
+    .nav-cell{
+      font-size:14px;
+      font-weight:600;
+      text-decoration:none;
+      color:var(--ice-300);
+    }
+    
+    .nav-cell.active{
+      background:rgba(76, 227, 184, 0.1);
+      border-color:var(--mint-400);
+      color:var(--mint-400);
+    }
+    
+    /* Projects header */
+    .projects-header{
+      grid-column:3/10;
+      grid-row:1/2;
+      flex-direction:row;
+      justify-content:space-between;
+      padding:20px;
+    }
+    
+    .header-title{
+      font-size:24px;
+      font-weight:700;
+      color:var(--ice-100);
+    }
+    
+    .add-project-btn{
+      background:var(--halo-gold);
+      color:var(--ink-900);
+      border:none;
+      padding:8px 16px;
+      border-radius:6px;
+      font-weight:600;
+      font-size:14px;
+      cursor:pointer;
+      transition:all 0.2s;
+      text-decoration:none;
+    }
+    
+    .add-project-btn:hover{
+      transform:translateY(-2px);
+      box-shadow:0 4px 12px rgba(247,208,70,0.4);
+    }
+    
+    /* Project cells */
+    .project-cell{
+      background:rgba(16, 33, 50, 0.4);
+      border:1px solid var(--grid-line);
+      padding:20px;
+      align-items:flex-start;
+      justify-content:flex-start;
+    }
+    
+    .project-cell:hover{
+      border-color:var(--mint-400);
+      background:rgba(76, 227, 184, 0.05);
+    }
+    
+    .project-name{
+      font-size:16px;
+      font-weight:600;
+      color:var(--ice-100);
+      margin-bottom:8px;
+      width:100%;
+    }
+    
+    .project-id{
+      font-family:var(--font-mono);
+      font-size:11px;
+      color:var(--ice-300);
+      opacity:0.6;
+      margin-bottom:12px;
+    }
+    
+    .project-stats{
+      display:flex;
+      gap:12px;
+      width:100%;
+      margin-top:auto;
+    }
+    
+    .stat-item{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    
+    .stat-value{
+      font-size:18px;
+      font-weight:700;
+      color:var(--mint-400);
+    }
+    
+    .stat-label{
+      font-size:10px;
+      color:var(--ice-300);
+      text-transform:uppercase;
+      letter-spacing:0.5px;
+    }
+    
+    /* Empty state */
+    .empty-state{
+      grid-column:5/9;
+      grid-row:4/6;
+      flex-direction:column;
+      padding:40px;
+      text-align:center;
+    }
+    
+    .empty-icon{
+      font-size:48px;
+      margin-bottom:16px;
+      opacity:0.3;
+    }
+    
+    .empty-title{
+      font-size:20px;
+      font-weight:600;
+      color:var(--ice-100);
+      margin-bottom:8px;
+    }
+    
+    .empty-message{
+      font-size:14px;
+      color:var(--ice-300);
+      margin-bottom:20px;
+    }
+    
+    /* Loading state */
+    .loading-cell{
+      grid-column:6/8;
+      grid-row:4/5;
+    }
+    
+    .spinner{
+      width:40px;
+      height:40px;
+      border:3px solid var(--grid-line);
+      border-top-color:var(--mint-400);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    
+    @keyframes spin{
+      to{transform:rotate(360deg);}
+    }
+    
+    /* Processing banner */
+    .processing-banner{
+      grid-column:3/11;
+      grid-row:2/3;
+      background:linear-gradient(90deg, rgba(76, 227, 184, 0.1) 0%, rgba(76, 227, 184, 0.05) 100%);
+      border:1px solid var(--mint-400);
+      flex-direction:row;
+      gap:16px;
+      display:none;
+    }
+    
+    .processing-banner.active{
+      display:flex;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-container">
+    <!-- Logo (top-left, spans 2 columns) -->
+    <div class="grid-cell logo-cell interactive" onclick="window.location.href='/'">
+      <img src="/static/uatu-logo.svg" alt="Uatu" />
     </div>
+    
+    <!-- Header/Title area (spans middle columns) -->
+    <div class="grid-cell projects-header">
+      <h1 class="header-title">Projects</h1>
+      <a href="/onboarding/repos" class="add-project-btn">+ New Audit</a>
+    </div>
+    
+    <!-- User info (top-right) -->
+    <div class="grid-cell user-cell">
+      <div>
+        {% if user %}
+        <div class="user-address">{{ user.wallet_address[:10] if user.wallet_address else user.login }}...</div>
+        <a href="/logout" class="logout-btn">Logout</a>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Navigation cells (row 2) -->
+    <a href="/dashboard" class="grid-cell nav-cell interactive active" style="grid-column:1/2; grid-row:2/3;">
+      Projects
+    </a>
+    
+    <a href="/portfolio" class="grid-cell nav-cell interactive" style="grid-column:2/3; grid-row:2/3;">
+      Portfolio
+    </a>
+    
+    <!-- Processing banner (if audit in progress) -->
+    <div class="grid-cell processing-banner" id="processingBanner">
+      <div class="spinner" style="width:20px; height:20px;"></div>
+      <div style="color:var(--ice-100); font-size:14px;">
+        Setting up new audit... The project will appear here once processing begins.
+      </div>
+    </div>
+    
+    <!-- Projects will be loaded here dynamically -->
+    <div id="projects-container" style="grid-column:1/13; grid-row:3/9; display:contents;">
+      <!-- Loading state -->
+      <div class="grid-cell loading-cell" id="loading-state">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        async function loadProjects(quick = false) {
-            try {
-                // Use quick mode for faster initial loading
-                const url = quick ? '/api/projects?quick=true' : '/api/projects';
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                const content = document.getElementById('projects-content');
-                
-                if (!data.projects || data.projects.length === 0) {
-                    content.innerHTML = `
-                        <div class="empty-state">
-                            <h3>No projects yet</h3>
-                            <p>Start your first audit to see projects here</p>
-                            <a href="/onboard" class="btn primary" style="margin-top: 20px;">Start Audit</a>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const projectsHtml = data.projects.map(project => {
-                    const branchesHtml = project.branches.map(branch => {
-                        const lastRun = branch.last_run;
-                        let statusClass = 'status-pending';
-                        let statusText = 'No runs';
-                        
-                        if (lastRun) {
-                            switch (lastRun.status) {
-                                case 'completed':
-                                    statusClass = 'status-completed';
-                                    statusText = 'Completed';
-                                    break;
-                                case 'running':
-                                    statusClass = 'status-running';
-                                    statusText = 'Running';
-                                    break;
-                                case 'failed':
-                                    statusClass = 'status-failed';
-                                    statusText = 'Failed';
-                                    break;
-                                default:
-                                    statusClass = 'status-pending';
-                                    statusText = 'Pending';
-                            }
-                        }
-                        
-                        const deltaHtml = lastRun && lastRun.delta ? 
-                            `<span class="delta ${lastRun.delta > 0 ? 'delta-up' : 'delta-down'}">
-                                ${lastRun.delta > 0 ? '+' : ''}${lastRun.delta.toFixed(1)}
-                            </span>` : '';
-                        
-                        return `
-                            <div class="branch-item">
-                                <div>
-                                    <div class="branch-name">${branch.name}</div>
-                                    ${lastRun ? `<div class="score">Score: ${lastRun.score.toFixed(1)} ${deltaHtml}</div>` : ''}
-                                </div>
-                                <div class="branch-status">
-                                    <span class="status-badge ${statusClass}">${statusText}</span>
-                                    ${lastRun ? `<a href="/run/${lastRun.ts}" class="btn ghost" style="padding: 4px 8px; font-size: 12px;">View</a>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    return `
-                        <div class="project-card">
-                            <div class="project-title">${project.owner_repo}</div>
-                            <div class="project-id">ID: ${project.id}</div>
-                            <div class="branches-list">
-                                ${branchesHtml}
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                                <div>
-                                    <small style="color: var(--muted);">
-                                        LLM: ${project.settings.llm} | 
-                                        Journeys: ${project.settings.journey_cap} | 
-                                        Stress: ${project.settings.stress}
-                                    </small>
-                                </div>
-                                <a href="/onboard?project=${encodeURIComponent(project.id)}" class="start-audit-btn">
-                                    Start Audit
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                content.innerHTML = `<div class="projects-grid">${projectsHtml}</div>`;
-                
-            } catch (error) {
-                console.error('Failed to load projects:', error);
-                document.getElementById('projects-content').innerHTML = `
-                    <div class="empty-state">
-                        <h3>Error loading projects</h3>
-                        <p>Please try refreshing the page</p>
-                    </div>
-                `;
-            }
+  <script>
+    let projectsData = [];
+    
+    async function loadProjects(quick = false) {
+      try {
+        const url = quick ? '/api/projects?quick=true' : '/api/projects';
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const container = document.getElementById('projects-container');
+        const loadingState = document.getElementById('loading-state');
+        
+        if (loadingState) {
+          loadingState.style.display = 'none';
         }
         
-        // Add CSS animation for spinner
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
+        if (!data.projects || data.projects.length === 0) {
+          container.innerHTML = `
+            <div class="grid-cell empty-state">
+              <div class="empty-icon">📦</div>
+              <div class="empty-title">No projects yet</div>
+              <div class="empty-message">Start your first audit to see projects here</div>
+              <a href="/onboarding/repos" class="add-project-btn">Start First Audit</a>
+            </div>
+          `;
+          return;
+        }
+        
+        projectsData = data.projects;
+        renderProjects();
+        
+      } catch (error) {
+        console.error('Failed to load projects:', error);
+        const container = document.getElementById('projects-container');
+        container.innerHTML = `
+          <div class="grid-cell empty-state" style="grid-column:5/9; grid-row:4/6;">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">Error loading projects</div>
+            <div class="empty-message">Please refresh the page</div>
+          </div>
         `;
-        document.head.appendChild(style);
+      }
+    }
+    
+    function renderProjects() {
+      const container = document.getElementById('projects-container');
+      container.innerHTML = '';
+      
+      // Calculate grid positions for projects
+      // Start from row 3, use 3x2 cells for each project
+      let col = 1;
+      let row = 3;
+      
+      projectsData.forEach((project, index) => {
+        // Create project cell (3 columns wide, 2 rows tall)
+        const projectCell = document.createElement('div');
+        projectCell.className = 'grid-cell project-cell interactive';
+        projectCell.style.gridColumn = `${col}/${col + 3}`;
+        projectCell.style.gridRow = `${row}/${row + 2}`;
         
-        // Smart polling function
-        async function checkQuickStatus() {
-            try {
-                const response = await fetch('/api/quick/status');
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Quick status check failed:', error);
-                return null;
-            }
+        // Count branches and test cases
+        const branchCount = project.branches ? project.branches.length : 0;
+        const testCount = project.branches ? 
+          project.branches.reduce((sum, b) => sum + (b.test_count || 0), 0) : 0;
+        
+        projectCell.innerHTML = `
+          <div class="project-name">${project.owner_repo}</div>
+          <div class="project-id">${project.id}</div>
+          <div class="project-stats">
+            <div class="stat-item">
+              <div class="stat-value">${branchCount}</div>
+              <div class="stat-label">Branches</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">${testCount}</div>
+              <div class="stat-label">Tests</div>
+            </div>
+          </div>
+        `;
+        
+        projectCell.onclick = () => {
+          window.location.href = `/project/${encodeURIComponent(project.id)}`;
+        };
+        
+        container.appendChild(projectCell);
+        
+        // Move to next position
+        col += 3;
+        if (col > 10) {
+          col = 1;
+          row += 2;
         }
-
-        let isAuditRunning = false;
-        let pollInterval = null;
-
-        async function smartPoll() {
-            // First do a quick status check
-            const quickStatus = await checkQuickStatus();
-            
-            if (quickStatus) {
-                const hasCurrentAudit = quickStatus.current_audit && 
-                    (quickStatus.current_audit.status === 'cloning' || 
-                     quickStatus.current_audit.status === 'running' || 
-                     quickStatus.current_audit.status === 'processing');
-                
-                if (hasCurrentAudit && !isAuditRunning) {
-                    // Audit just started - show banner and switch to fast polling
-                    isAuditRunning = true;
-                    const banner = document.getElementById('processingBanner');
-                    if (banner) {
-                        banner.style.display = 'flex';
-                    }
-                    console.log('Audit detected, starting fast polling');
-                    updatePollingMode();
-                    
-                } else if (!hasCurrentAudit && isAuditRunning) {
-                    // Audit finished - hide banner
-                    isAuditRunning = false;
-                    const banner = document.getElementById('processingBanner');
-                    if (banner) {
-                        banner.style.display = 'none';
-                    }
-                    console.log('Audit completed, switching to slow polling');
-                    updatePollingMode();
-                    
-                    // Load full projects immediately to show results
-                    loadProjects(false);
-                }
-            }
+      });
+    }
+    
+    // Check for audit in progress
+    async function checkAuditStatus() {
+      try {
+        const response = await fetch('/api/quick/status');
+        const data = await response.json();
+        
+        const banner = document.getElementById('processingBanner');
+        if (data.current_audit && 
+            (data.current_audit.status === 'cloning' || 
+             data.current_audit.status === 'running' || 
+             data.current_audit.status === 'processing')) {
+          banner.classList.add('active');
+        } else {
+          banner.classList.remove('active');
         }
-
-        // Check if we were redirected from setup-project with audit in progress
-        const urlParams = new URLSearchParams(window.location.search);
-        const auditId = urlParams.get('audit_id');
-        const status = urlParams.get('status');
-        
-        // Initial load - use quick mode for faster response
-        loadProjects(true);
-        
-        if (status === 'processing') {
-            isAuditRunning = true;
-            const banner = document.getElementById('processingBanner');
-            if (banner) {
-                banner.style.display = 'flex';
-            }
-            console.log(`New audit ${auditId} is being processed...`);
-        }
-        
-        // Start smart polling immediately
-        smartPoll();
-        setInterval(smartPoll, 3000);  // Check status every 3 seconds
-        
-        // Adaptive project loading based on audit status
-        let projectPollInterval;
-        function setupProjectPolling() {
-            if (projectPollInterval) clearInterval(projectPollInterval);
-            
-            if (isAuditRunning) {
-                // During audit: quick polling every 5 seconds
-                projectPollInterval = setInterval(() => loadProjects(true), 5000);
-            } else {
-                // No audit: full polling every 20 seconds
-                projectPollInterval = setInterval(() => loadProjects(false), 20000);
-            }
-        }
-        
-        // Initial setup
-        setupProjectPolling();
-        
-        // Update polling when audit status changes (called from smartPoll)
-        function updatePollingMode() {
-            setupProjectPolling();
-        }
-    </script>
+      } catch (error) {
+        console.error('Status check failed:', error);
+      }
+    }
+    
+    // Initial load
+    loadProjects(true);
+    checkAuditStatus();
+    
+    // Periodic updates
+    setInterval(() => {
+      checkAuditStatus();
+      loadProjects(true);
+    }, 5000);
+  </script>
 </body>
 </html>

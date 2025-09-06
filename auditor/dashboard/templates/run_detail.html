@@ -405,9 +405,12 @@
                 
                 // Stop polling if completed or failed
                 if (status.phase === 'completed' || status.phase === 'failed') {
+                    window.statusPollingComplete = true;
                     clearInterval(statusInterval);
                     clearInterval(logsInterval);
                     console.log('Stopped polling - audit is', status.phase);
+                } else {
+                    window.statusPollingComplete = false;
                 }
                 
             } catch (error) {

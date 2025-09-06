@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ branch.name }} — {{ project.name }} — UatuAudit</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      /* Color palette */
+      --ink-900:#0B1B2B;
+      --slate-800:#102132;
+      --grid-line:rgba(84, 130, 158, .4);
+      --halo-gold:#F7D046;
+      --mint-400:#4CE3B8;
+      --ice-100:#F2F7FB;
+      --ice-200:#D5E4F0;
+      --ice-300:#9CB4C6;
+      --danger:#E74C3C;
+      --success:#27AE60;
+      --warn:#F39C12;
+      
+      /* Typography */
+      --font-display:'Inter', system-ui, sans-serif;
+      --font-body:'Inter', system-ui, sans-serif;
+      --font-mono:'IBM Plex Mono', monospace;
+    }
+    
+    /* Reset */
+    *{box-sizing:border-box; margin:0; padding:0;}
+    html,body{height:100%; overflow:hidden;}
+    body{
+      font-family:var(--font-body); 
+      color:var(--ice-200); 
+      background:var(--ink-900);
+      -webkit-font-smoothing:antialiased;
+    }
+    
+    /* Grid container - 12x8 grid */
+    .grid-container{
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100vh;
+      display:grid;
+      grid-template-columns:repeat(12, 1fr);
+      grid-template-rows:repeat(8, 1fr);
+      gap:2px;
+    }
+    
+    /* Base grid cell */
+    .grid-cell{
+      background:rgba(16, 33, 50, 0.2);
+      border:1px solid var(--grid-line);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      overflow:hidden;
+      transition:all 0.2s ease;
+      position:relative;
+    }
+    
+    /* Interactive hover effects */
+    .grid-cell.interactive:hover{
+      border-color:var(--halo-gold);
+      border-width:2px;
+      transform:scale(1.01);
+      z-index:10;
+      box-shadow:0 0 15px rgba(247,208,70,.3);
+      cursor:pointer;
+    }
+    
+    /* Logo cell - top left */
+    .logo-cell{
+      grid-column:1/3;
+      grid-row:1/2;
+      background:transparent;
+      border:2px solid var(--grid-line);
+      cursor:pointer;
+    }
+    
+    .logo-cell img{
+      width:80px;
+      height:80px;
+    }
+    
+    /* Branch header */
+    .branch-header{
+      grid-column:3/9;
+      grid-row:1/2;
+      flex-direction:column;
+      justify-content:center;
+      align-items:flex-start;
+      padding:20px;
+    }
+    
+    .branch-title{
+      font-size:20px;
+      font-weight:700;
+      color:var(--ice-100);
+      margin-bottom:4px;
+    }
+    
+    .branch-breadcrumb{
+      font-size:12px;
+      color:var(--ice-300);
+      font-family:var(--font-mono);
+    }
+    
+    /* Back button */
+    .back-cell{
+      grid-column:9/10;
+      grid-row:1/2;
+      background:rgba(16, 33, 50, 0.4);
+      text-decoration:none;
+      color:var(--ice-300);
+      font-size:14px;
+      font-weight:600;
+    }
+    
+    .back-cell:hover{
+      border-color:var(--mint-400);
+      color:var(--mint-400);
+    }
+    
+    /* Add test button */
+    .add-test-cell{
+      grid-column:10/11;
+      grid-row:1/2;
+      background:var(--halo-gold);
+      color:var(--ink-900);
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+      border:2px solid var(--halo-gold);
+    }
+    
+    .add-test-cell:hover{
+      transform:translateY(-2px);
+      box-shadow:0 4px 12px rgba(247,208,70,0.4);
+    }
+    
+    /* User info */
+    .user-cell{
+      grid-column:11/13;
+      grid-row:1/2;
+      background:rgba(16, 33, 50, 0.4);
+      font-size:13px;
+      justify-content:space-around;
+      padding:12px;
+    }
+    
+    /* Test file cells */
+    .test-cell{
+      background:rgba(16, 33, 50, 0.4);
+      border:1px solid var(--grid-line);
+      padding:20px;
+      align-items:flex-start;
+      justify-content:flex-start;
+      position:relative;
+    }
+    
+    .test-cell:hover{
+      border-color:var(--mint-400);
+      background:rgba(76, 227, 184, 0.05);
+    }
+    
+    .test-name{
+      font-size:16px;
+      font-weight:600;
+      color:var(--ice-100);
+      margin-bottom:8px;
+      width:100%;
+    }
+    
+    .test-file{
+      font-family:var(--font-mono);
+      font-size:12px;
+      color:var(--ice-300);
+      margin-bottom:16px;
+    }
+    
+    .test-actions{
+      display:flex;
+      gap:8px;
+      width:100%;
+      margin-top:auto;
+    }
+    
+    .action-btn{
+      background:transparent;
+      border:1px solid var(--grid-line);
+      color:var(--ice-300);
+      padding:4px 8px;
+      border-radius:4px;
+      font-size:11px;
+      font-weight:500;
+      cursor:pointer;
+      transition:all 0.2s;
+      text-decoration:none;
+      display:inline-block;
+    }
+    
+    .action-btn.primary{
+      background:var(--mint-400);
+      color:var(--ink-900);
+      border:none;
+      font-weight:600;
+    }
+    
+    .action-btn.primary:hover{
+      transform:translateY(-1px);
+      box-shadow:0 2px 8px rgba(76,227,184,0.4);
+    }
+    
+    .action-btn.danger{
+      border-color:var(--danger);
+      color:var(--danger);
+    }
+    
+    .action-btn.danger:hover{
+      background:var(--danger);
+      color:var(--ice-100);
+    }
+    
+    .action-btn:hover{
+      border-color:var(--mint-400);
+      color:var(--mint-400);
+    }
+    
+    /* Empty state */
+    .empty-state{
+      grid-column:5/9;
+      grid-row:4/6;
+      flex-direction:column;
+      padding:40px;
+      text-align:center;
+    }
+    
+    /* Test editor overlay */
+    .test-editor{
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100vh;
+      background:rgba(11, 27, 43, 0.95);
+      backdrop-filter:blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:1000;
+    }
+    
+    .test-editor.active{
+      display:flex;
+    }
+    
+    .editor-panel{
+      width:80%;
+      max-width:900px;
+      height:80%;
+      background:var(--slate-800);
+      border:2px solid var(--grid-line);
+      border-radius:8px;
+      padding:30px;
+      display:flex;
+      flex-direction:column;
+      gap:20px;
+    }
+    
+    .editor-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    
+    .editor-title{
+      font-size:20px;
+      font-weight:600;
+      color:var(--ice-100);
+    }
+    
+    .close-btn{
+      background:transparent;
+      border:1px solid var(--grid-line);
+      color:var(--ice-300);
+      padding:6px 12px;
+      border-radius:4px;
+      cursor:pointer;
+      font-size:13px;
+    }
+    
+    .close-btn:hover{
+      border-color:var(--danger);
+      color:var(--danger);
+    }
+    
+    .editor-form{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    
+    .form-row{
+      display:flex;
+      gap:16px;
+    }
+    
+    .form-group{
+      flex:1;
+    }
+    
+    .form-label{
+      display:block;
+      font-size:13px;
+      color:var(--ice-300);
+      margin-bottom:6px;
+      font-weight:500;
+    }
+    
+    .form-input{
+      width:100%;
+      background:var(--ink-900);
+      border:1px solid var(--grid-line);
+      color:var(--ice-100);
+      padding:8px 12px;
+      border-radius:4px;
+      font-family:var(--font-mono);
+      font-size:14px;
+    }
+    
+    .form-input:focus{
+      border-color:var(--mint-400);
+      outline:none;
+    }
+    
+    .code-editor{
+      flex:1;
+      background:var(--ink-900);
+      border:1px solid var(--grid-line);
+      color:var(--ice-100);
+      padding:16px;
+      border-radius:4px;
+      font-family:var(--font-mono);
+      font-size:13px;
+      line-height:1.5;
+      resize:none;
+    }
+    
+    .code-editor:focus{
+      border-color:var(--mint-400);
+      outline:none;
+    }
+    
+    .editor-actions{
+      display:flex;
+      gap:12px;
+      justify-content:flex-end;
+    }
+    
+    .btn{
+      background:transparent;
+      border:1px solid var(--grid-line);
+      color:var(--ice-300);
+      padding:8px 16px;
+      border-radius:4px;
+      font-size:14px;
+      font-weight:500;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    
+    .btn.primary{
+      background:var(--halo-gold);
+      color:var(--ink-900);
+      border:none;
+      font-weight:600;
+    }
+    
+    .btn.primary:hover{
+      transform:translateY(-2px);
+      box-shadow:0 4px 12px rgba(247,208,70,0.4);
+    }
+    
+    .btn:hover{
+      border-color:var(--mint-400);
+      color:var(--mint-400);
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-container">
+    <!-- Logo (top-left) -->
+    <div class="grid-cell logo-cell interactive" onclick="window.location.href='/'">
+      <img src="/static/uatu-logo.svg" alt="Uatu" />
+    </div>
+    
+    <!-- Branch header -->
+    <div class="grid-cell branch-header">
+      <h1 class="branch-title">{{ branch.name }}</h1>
+      <div class="branch-breadcrumb">{{ project.name }} / {{ branch.name }}</div>
+    </div>
+    
+    <!-- Back button -->
+    <a href="/project/{{ project.path }}" class="grid-cell back-cell interactive">
+      ← Back
+    </a>
+    
+    <!-- Add test button -->
+    <div class="grid-cell add-test-cell interactive" onclick="openTestEditor()">
+      + Add Test
+    </div>
+    
+    <!-- User info -->
+    <div class="grid-cell user-cell">
+      {% if user %}
+      <div style="font-family:var(--font-mono); color:var(--mint-400); font-size:12px;">
+        {{ user.wallet_address[:10] if user.wallet_address else user.login }}...
+      </div>
+      {% endif %}
+    </div>
+    
+    <!-- Test files section -->
+    {% if tests %}
+      {% for test in tests %}
+        <!-- Test cell (3 columns wide, 2 rows tall) -->
+        <div class="grid-cell test-cell interactive" 
+             style="grid-column:{{ 1 + (loop.index0 % 4) * 3 }}/{{ 4 + (loop.index0 % 4) * 3 }}; 
+                    grid-row:{{ 2 + (loop.index0 // 4) * 2 }}/{{ 4 + (loop.index0 // 4) * 2 }};"
+             onclick="editTest('{{ test.name }}')">
+          <div class="test-name">{{ test.name }}</div>
+          <div class="test-file">{{ test.file_path }}</div>
+          
+          <div class="test-actions">
+            <button class="action-btn" onclick="event.stopPropagation(); editTest('{{ test.name }}')">
+              Edit
+            </button>
+            <button class="action-btn primary" onclick="event.stopPropagation(); runTest('{{ test.name }}')">
+              Run
+            </button>
+            <button class="action-btn danger" onclick="event.stopPropagation(); deleteTest('{{ test.name }}')">
+              Delete
+            </button>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="grid-cell empty-state">
+        <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🧪</div>
+        <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">
+          No test cases
+        </div>
+        <div style="font-size:14px; color:var(--ice-300); margin-bottom:20px;">
+          Create your first test case for this branch
+        </div>
+        <div class="btn primary" onclick="openTestEditor()">Create Test</div>
+      </div>
+    {% endif %}
+  </div>
+  
+  <!-- Test editor overlay -->
+  <div class="test-editor" id="testEditor">
+    <div class="editor-panel">
+      <div class="editor-header">
+        <h2 class="editor-title" id="editorTitle">Create Test Case</h2>
+        <button class="close-btn" onclick="closeTestEditor()">✕</button>
+      </div>
+      
+      <form class="editor-form" id="testForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Test Name</label>
+            <input type="text" class="form-input" id="testName" placeholder="e.g., TestOwnershipTransfer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Contract</label>
+            <input type="text" class="form-input" id="targetContract" placeholder="e.g., MyContract">
+          </div>
+        </div>
+        
+        <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
+          <label class="form-label">Test Code</label>
+          <textarea class="code-editor" id="testCode" placeholder="// Write your Solidity test code here...">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "forge-std/Test.sol";
+
+contract TestExample is Test {
+    function setUp() public {
+        // Setup code
+    }
+    
+    function test_Example() public {
+        // Test code
+        assertTrue(true);
+    }
+}</textarea>
+        </div>
+        
+        <div class="editor-actions">
+          <button type="button" class="btn" onclick="closeTestEditor()">Cancel</button>
+          <button type="button" class="btn primary" onclick="saveTest()">Save Test</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  
+  <script>
+    let currentTest = null;
+    
+    function openTestEditor(testName = null) {
+      const editor = document.getElementById('testEditor');
+      const title = document.getElementById('editorTitle');
+      
+      if (testName) {
+        title.textContent = 'Edit Test Case';
+        currentTest = testName;
+        // TODO: Load test data
+      } else {
+        title.textContent = 'Create Test Case';
+        currentTest = null;
+        // Clear form
+        document.getElementById('testName').value = '';
+        document.getElementById('targetContract').value = '';
+        document.getElementById('testCode').value = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "forge-std/Test.sol";
+
+contract TestExample is Test {
+    function setUp() public {
+        // Setup code
+    }
+    
+    function test_Example() public {
+        // Test code
+        assertTrue(true);
+    }
+}`;
+      }
+      
+      editor.classList.add('active');
+    }
+    
+    function closeTestEditor() {
+      const editor = document.getElementById('testEditor');
+      editor.classList.remove('active');
+      currentTest = null;
+    }
+    
+    function editTest(testName) {
+      openTestEditor(testName);
+    }
+    
+    async function saveTest() {
+      const testName = document.getElementById('testName').value;
+      const targetContract = document.getElementById('targetContract').value;
+      const testCode = document.getElementById('testCode').value;
+      
+      if (!testName || !testCode) {
+        alert('Please fill in test name and code');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/test/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project: '{{ project.path }}',
+            branch: '{{ branch.name }}',
+            name: testName,
+            target_contract: targetContract,
+            code: testCode,
+            existing: currentTest
+          })
+        });
+        
+        if (response.ok) {
+          alert(currentTest ? 'Test updated successfully!' : 'Test created successfully!');
+          closeTestEditor();
+          window.location.reload();
+        } else {
+          const error = await response.json();
+          alert('Failed to save test: ' + (error.detail || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error saving test: ' + error.message);
+      }
+    }
+    
+    async function runTest(testName) {
+      if (confirm(`Run test ${testName}?`)) {
+        try {
+          const response = await fetch('/api/test/run', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              project: '{{ project.path }}',
+              branch: '{{ branch.name }}',
+              test: testName
+            })
+          });
+          
+          if (response.ok) {
+            alert('Test started! Check console for output.');
+          } else {
+            alert('Failed to run test');
+          }
+        } catch (error) {
+          alert('Error running test: ' + error.message);
+        }
+      }
+    }
+    
+    async function deleteTest(testName) {
+      if (confirm(`Delete test ${testName}? This cannot be undone.`)) {
+        try {
+          const response = await fetch('/api/test/delete', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              project: '{{ project.path }}',
+              branch: '{{ branch.name }}',
+              test: testName
+            })
+          });
+          
+          if (response.ok) {
+            alert('Test deleted successfully!');
+            window.location.reload();
+          } else {
+            alert('Failed to delete test');
+          }
+        } catch (error) {
+          alert('Error deleting test: ' + error.message);
+        }
+      }
+    }
+    
+    // Close editor with Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeTestEditor();
+      }
+    });
+  </script>
+</body>
+</html>
