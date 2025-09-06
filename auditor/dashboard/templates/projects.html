@@ -1,467 +1,288 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Projects — UatuAudit</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      /* Color palette */
-      --ink-900:#0B1B2B;
-      --slate-800:#102132;
-      --grid-line:rgba(84, 130, 158, .4);
-      --halo-gold:#F7D046;
-      --mint-400:#4CE3B8;
-      --ice-100:#F2F7FB;
-      --ice-200:#D5E4F0;
-      --ice-300:#9CB4C6;
-      --danger:#E74C3C;
-      --success:#27AE60;
-      
-      /* Typography */
-      --font-display:'Inter', system-ui, sans-serif;
-      --font-body:'Inter', system-ui, sans-serif;
-      --font-mono:'IBM Plex Mono', monospace;
-    }
-    
-    /* Reset */
-    *{box-sizing:border-box; margin:0; padding:0;}
-    html,body{height:100%; overflow:hidden;}
-    body{
-      font-family:var(--font-body); 
-      color:var(--ice-200); 
-      background:var(--ink-900);
-      -webkit-font-smoothing:antialiased;
-    }
-    
-    /* Grid container - 12x8 grid */
-    .grid-container{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100vw;
-      height:100vh;
-      display:grid;
-      grid-template-columns:repeat(12, 1fr);
-      grid-template-rows:repeat(8, 1fr);
-      gap:2px;
-    }
-    
-    /* Base grid cell */
-    .grid-cell{
-      background:rgba(16, 33, 50, 0.2);
-      border:1px solid var(--grid-line);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      overflow:hidden;
-      transition:all 0.2s ease;
-      position:relative;
-    }
-    
-    /* Interactive hover effects */
-    .grid-cell.interactive:hover{
-      border-color:var(--halo-gold);
-      border-width:2px;
-      transform:scale(1.01);
-      z-index:10;
-      box-shadow:0 0 15px rgba(247,208,70,.3);
-      cursor:pointer;
-    }
-    
-    /* Logo cell - top left */
-    .logo-cell{
-      grid-column:1/3;
-      grid-row:1/2;
-      background:transparent;
-      border:2px solid var(--grid-line);
-      cursor:pointer;
-    }
-    
-    .logo-cell img{
-      width:80px;
-      height:80px;
-    }
-    
-    /* User info cell */
-    .user-cell{
-      grid-column:10/13;
-      grid-row:1/2;
-      background:rgba(16, 33, 50, 0.4);
-      font-size:13px;
-      justify-content:space-around;
-      padding:12px;
-    }
-    
-    .user-address{
-      font-family:var(--font-mono);
-      color:var(--mint-400);
-      font-size:12px;
-      font-weight:500;
-    }
-    
-    .logout-btn{
-      background:transparent;
-      color:var(--ice-300);
-      border:1px solid var(--grid-line);
-      padding:4px 12px;
-      border-radius:4px;
-      font-size:12px;
-      cursor:pointer;
-      transition:all 0.2s;
-      text-decoration:none;
-      display:inline-block;
-      margin-top:8px;
-    }
-    
-    .logout-btn:hover{
-      border-color:var(--danger);
-      color:var(--danger);
-    }
-    
-    /* Navigation cells */
-    .nav-cell{
-      font-size:14px;
-      font-weight:600;
-      text-decoration:none;
-      color:var(--ice-300);
-    }
-    
-    .nav-cell.active{
-      background:rgba(76, 227, 184, 0.1);
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-    
-    /* Projects header */
-    .projects-header{
-      grid-column:3/10;
-      grid-row:1/2;
-      flex-direction:row;
-      justify-content:space-between;
-      padding:20px;
-    }
-    
-    .header-title{
-      font-size:24px;
-      font-weight:700;
-      color:var(--ice-100);
-    }
-    
-    .add-project-btn{
-      background:var(--halo-gold);
-      color:var(--ink-900);
-      border:none;
-      padding:8px 16px;
-      border-radius:6px;
-      font-weight:600;
-      font-size:14px;
-      cursor:pointer;
-      transition:all 0.2s;
-      text-decoration:none;
-    }
-    
-    .add-project-btn:hover{
-      transform:translateY(-2px);
-      box-shadow:0 4px 12px rgba(247,208,70,0.4);
-    }
-    
-    /* Project cells */
-    .project-cell{
-      background:rgba(16, 33, 50, 0.4);
-      border:1px solid var(--grid-line);
-      padding:20px;
-      align-items:flex-start;
-      justify-content:flex-start;
-    }
-    
-    .project-cell:hover{
-      border-color:var(--mint-400);
-      background:rgba(76, 227, 184, 0.05);
-    }
-    
-    .project-name{
-      font-size:16px;
-      font-weight:600;
-      color:var(--ice-100);
-      margin-bottom:8px;
-      width:100%;
-    }
-    
-    .project-id{
-      font-family:var(--font-mono);
-      font-size:11px;
-      color:var(--ice-300);
-      opacity:0.6;
-      margin-bottom:12px;
-    }
-    
-    .project-stats{
-      display:flex;
-      gap:12px;
-      width:100%;
-      margin-top:auto;
-    }
-    
-    .stat-item{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-    }
-    
-    .stat-value{
-      font-size:18px;
-      font-weight:700;
-      color:var(--mint-400);
-    }
-    
-    .stat-label{
-      font-size:10px;
-      color:var(--ice-300);
-      text-transform:uppercase;
-      letter-spacing:0.5px;
-    }
-    
-    /* Empty state */
-    .empty-state{
-      grid-column:5/9;
-      grid-row:4/6;
-      flex-direction:column;
-      padding:40px;
-      text-align:center;
-    }
-    
-    .empty-icon{
-      font-size:48px;
-      margin-bottom:16px;
-      opacity:0.3;
-    }
-    
-    .empty-title{
-      font-size:20px;
-      font-weight:600;
-      color:var(--ice-100);
-      margin-bottom:8px;
-    }
-    
-    .empty-message{
-      font-size:14px;
-      color:var(--ice-300);
-      margin-bottom:20px;
-    }
-    
-    /* Loading state */
-    .loading-cell{
-      grid-column:6/8;
-      grid-row:4/5;
-    }
-    
-    .spinner{
-      width:40px;
-      height:40px;
-      border:3px solid var(--grid-line);
-      border-top-color:var(--mint-400);
-      border-radius:50%;
-      animation:spin 1s linear infinite;
-    }
-    
-    @keyframes spin{
-      to{transform:rotate(360deg);}
-    }
-    
-    /* Processing banner */
-    .processing-banner{
-      grid-column:3/11;
-      grid-row:2/3;
-      background:linear-gradient(90deg, rgba(76, 227, 184, 0.1) 0%, rgba(76, 227, 184, 0.05) 100%);
-      border:1px solid var(--mint-400);
-      flex-direction:row;
-      gap:16px;
-      display:none;
-    }
-    
-    .processing-banner.active{
-      display:flex;
-    }
-  </style>
-</head>
-<body>
-  <div class="grid-container">
-    <!-- Logo (top-left, spans 2 columns) -->
-    <div class="grid-cell logo-cell interactive" onclick="window.location.href='/'">
-      <img src="/static/uatu-logo.svg" alt="Uatu" />
-    </div>
-    
-    <!-- Header/Title area (spans middle columns) -->
-    <div class="grid-cell projects-header">
-      <h1 class="header-title">Projects</h1>
-      <a href="/onboarding/repos" class="add-project-btn">+ New Audit</a>
-    </div>
-    
-    <!-- User info (top-right) -->
-    <div class="grid-cell user-cell">
-      <div>
-        {% if user %}
-        <div class="user-address">{{ user.wallet_address[:10] if user.wallet_address else user.login }}...</div>
-        <a href="/logout" class="logout-btn">Logout</a>
-        {% endif %}
-      </div>
-    </div>
-    
-    <!-- Navigation cells (row 2) -->
-    <a href="/dashboard" class="grid-cell nav-cell interactive active" style="grid-column:1/2; grid-row:2/3;">
-      Projects
-    </a>
-    
-    <a href="/portfolio" class="grid-cell nav-cell interactive" style="grid-column:2/3; grid-row:2/3;">
-      Portfolio
-    </a>
-    
-    <!-- Processing banner (if audit in progress) -->
-    <div class="grid-cell processing-banner" id="processingBanner">
-      <div class="spinner" style="width:20px; height:20px;"></div>
-      <div style="color:var(--ice-100); font-size:14px;">
-        Setting up new audit... The project will appear here once processing begins.
-      </div>
-    </div>
-    
-    <!-- Projects will be loaded here dynamically -->
-    <div id="projects-container" style="grid-column:1/13; grid-row:3/9; display:contents;">
-      <!-- Loading state -->
-      <div class="grid-cell loading-cell" id="loading-state">
-        <div class="spinner"></div>
-      </div>
-    </div>
-  </div>
+{% extends "base.html" %}
 
-  <script>
-    let projectsData = [];
-    
-    async function loadProjects(quick = false) {
-      try {
-        const url = quick ? '/api/projects?quick=true' : '/api/projects';
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        const container = document.getElementById('projects-container');
-        const loadingState = document.getElementById('loading-state');
-        
-        if (loadingState) {
-          loadingState.style.display = 'none';
-        }
-        
-        if (!data.projects || data.projects.length === 0) {
-          container.innerHTML = `
-            <div class="grid-cell empty-state">
-              <div class="empty-icon">📦</div>
-              <div class="empty-title">No projects yet</div>
-              <div class="empty-message">Start your first audit to see projects here</div>
-              <a href="/onboarding/repos" class="add-project-btn">Start First Audit</a>
+{% block title %}Projects — UatuAudit{% endblock %}
+
+{% block header_content %}
+<!-- Projects title in grid cells 3-6 -->
+<div class="grid-cell" style="grid-column:3/7; grid-row:1/2; display:flex; align-items:center; padding-left:20px;">
+  <h1 class="page-title" style="color:var(--ice-100); font-size:24px; font-weight:700;">Projects</h1>
+</div>
+<!-- Menu cells for spacing -->
+<div class="grid-cell menu-cell" style="grid-column:7/8; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:8/9; grid-row:1/2;"></div>
+<!-- Add New Project button in grid cells 9-10 -->
+<div class="grid-cell" style="grid-column:9/11; grid-row:1/2; display:flex; align-items:center; justify-content:center;">
+  <a href="/onboarding/repos" class="action-btn" style="background:var(--halo-gold); color:var(--ink-900); padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; transition:all 0.2s;">+ Add New Project</a>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<!-- Fill remaining grid cells to complete 12x8 layout -->
+{% for row in range(2, 9) %}
+  {% for col in range(1, 13) %}
+    <div class="grid-cell" style="grid-column:{{ col }}/{{ col + 1 }}; grid-row:{{ row }}/{{ row + 1 }};"></div>
+  {% endfor %}
+{% endfor %}
+
+<!-- Processing banner overlay (when audit in progress) -->
+<div style="position:absolute; top:12.5%; left:25%; width:50%; height:12.5%; z-index:20; display:none; background:linear-gradient(90deg, rgba(76, 227, 184, 0.1) 0%, rgba(76, 227, 184, 0.05) 100%); border:1px solid var(--mint-400); align-items:center; justify-content:center; gap:16px;" id="processingBanner">
+  <div class="spinner" style="width:20px; height:20px; border:2px solid var(--grid-line); border-top-color:var(--mint-400); border-radius:50%; animation:spin 1s linear infinite;"></div>
+  <div style="color:var(--ice-100); font-size:14px;">Setting up new audit...</div>
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+  /* Project-specific styles */
+  .project-cell{
+    background:rgba(16, 33, 50, 0.4);
+    border:1px solid var(--grid-line);
+    padding:20px;
+    align-items:flex-start;
+    justify-content:flex-start;
+  }
+  
+  .project-cell:hover{
+    border-color:var(--mint-400);
+    background:rgba(76, 227, 184, 0.05);
+  }
+  
+  .project-name{
+    font-size:16px;
+    font-weight:600;
+    color:var(--ice-100);
+    margin-bottom:8px;
+    width:100%;
+  }
+  
+  .project-id{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--ice-300);
+    opacity:0.6;
+    margin-bottom:12px;
+  }
+  
+  .project-stats{
+    display:flex;
+    gap:12px;
+    width:100%;
+    margin-top:auto;
+  }
+  
+  .stat-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  
+  .stat-value{
+    font-size:18px;
+    font-weight:700;
+    color:var(--mint-400);
+  }
+  
+  .stat-label{
+    font-size:10px;
+    color:var(--ice-300);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+  
+  .spinner{
+    width:40px;
+    height:40px;
+    border:3px solid var(--grid-line);
+    border-top-color:var(--mint-400);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  
+  @keyframes spin{
+    to{transform:rotate(360deg);};
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let projectsData = [];
+  
+  async function loadProjects(quick = false) {
+    try {
+      const url = quick ? '/api/projects?quick=true' : '/api/projects';
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (!data.projects || data.projects.length === 0) {
+        // Show empty state in center grid cells
+        const centerCell = document.querySelector(`div[style*="grid-column:5/6"][style*="grid-row:4/5"]`);
+        if (centerCell) {
+          centerCell.style.gridColumn = '5/9';
+          centerCell.style.gridRow = '4/6';
+          centerCell.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+              <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">📦</div>
+              <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">No projects yet</div>
+              <div style="font-size:14px; color:var(--ice-300); margin-bottom:20px;">Start your first audit to see projects here</div>
+              <a href="/onboarding/repos" style="background:var(--halo-gold); color:var(--ink-900); padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600;">Start First Audit</a>
             </div>
           `;
-          return;
+          // Hide covered cells
+          for (let r = 4; r < 6; r++) {
+            for (let c = 5; c < 9; c++) {
+              if (r !== 4 || c !== 5) {
+                const cellToHide = document.querySelector(`div[style*="grid-column:${c}/${c+1}"][style*="grid-row:${r}/${r+1}"]`);
+                if (cellToHide) cellToHide.style.display = 'none';
+              }
+            }
+          }
         }
-        
-        projectsData = data.projects;
-        renderProjects();
-        
-      } catch (error) {
-        console.error('Failed to load projects:', error);
-        const container = document.getElementById('projects-container');
-        container.innerHTML = `
-          <div class="grid-cell empty-state" style="grid-column:5/9; grid-row:4/6;">
-            <div class="empty-icon">⚠️</div>
-            <div class="empty-title">Error loading projects</div>
-            <div class="empty-message">Please refresh the page</div>
+        return;
+      }
+      
+      projectsData = data.projects;
+      renderProjects();
+      
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      // Show error state in center grid cells
+      const centerCell = document.querySelector(`div[style*="grid-column:5/6"][style*="grid-row:4/5"]`);
+      if (centerCell) {
+        centerCell.style.gridColumn = '5/9';
+        centerCell.style.gridRow = '4/6';
+        centerCell.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+            <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">⚠️</div>
+            <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">Error loading projects</div>
+            <div style="font-size:14px; color:var(--ice-300);">Please refresh the page</div>
           </div>
         `;
       }
     }
+  }
+  
+  function renderProjects() {
+    // Instead of overlay, find and replace specific grid cells
+    // Projects will merge 3x1 grid areas starting from row 3 (3 columns, 1 row)
+    let col = 1;
+    let row = 3;
     
-    function renderProjects() {
-      const container = document.getElementById('projects-container');
-      container.innerHTML = '';
-      
-      // Calculate grid positions for projects
-      // Start from row 3, use 3x2 cells for each project
-      let col = 1;
-      let row = 3;
-      
-      projectsData.forEach((project, index) => {
-        // Create project cell (3 columns wide, 2 rows tall)
-        const projectCell = document.createElement('div');
-        projectCell.className = 'grid-cell project-cell interactive';
-        projectCell.style.gridColumn = `${col}/${col + 3}`;
-        projectCell.style.gridRow = `${row}/${row + 2}`;
+    projectsData.forEach((project, index) => {
+      // Find the first grid cell in this 3x1 area and replace it with project content
+      const targetCell = document.querySelector(`div[style*="grid-column:${col}/${col+1}"][style*="grid-row:${row}/${row+1}"]`);
+      if (targetCell) {
+        // Transform this cell into a project cell that spans 3x1
+        targetCell.style.gridColumn = `${col}/${col+3}`;
+        targetCell.style.gridRow = `${row}/${row+1}`;
+        targetCell.className = 'grid-cell project-cell interactive';
         
-        // Count branches and test cases
+        // Hide the other cells that are now covered by this merged cell
+        for (let c = col; c < col + 3; c++) {
+          if (c !== col) { // Skip the main cell we're using
+            const cellToHide = document.querySelector(`div[style*="grid-column:${c}/${c+1}"][style*="grid-row:${row}/${row+1}"]`);
+            if (cellToHide) {
+              cellToHide.style.display = 'none';
+            }
+          }
+        }
+        
+        // Count branches, contracts, and reports
         const branchCount = project.branches ? project.branches.length : 0;
-        const testCount = project.branches ? 
-          project.branches.reduce((sum, b) => sum + (b.test_count || 0), 0) : 0;
+        const contractCount = project.branches ? 
+          project.branches.reduce((sum, b) => sum + (b.contract_count || 0), 0) : 0;
+        const reportCount = project.branches ? 
+          project.branches.reduce((sum, b) => sum + (b.reports ? b.reports.length : 0), 0) : 0;
         
-        projectCell.innerHTML = `
-          <div class="project-name">${project.owner_repo}</div>
-          <div class="project-id">${project.id}</div>
+        // Get latest branch info
+        const latestBranch = project.branches && project.branches.length > 0 ? 
+          project.branches[project.branches.length - 1] : null;
+        const lastScan = latestBranch ? 
+          (latestBranch.created_at ? new Date(latestBranch.created_at).toLocaleDateString() : 'Unknown') : 'Never';
+        
+        // Check if there are any critical/high findings
+        let riskLevel = 'Low';
+        let riskColor = 'var(--mint-400)';
+        if (project.branches) {
+          const hasCritical = project.branches.some(b => b.reports && b.reports.some(r => r.severity === 'Critical'));
+          const hasHigh = project.branches.some(b => b.reports && b.reports.some(r => r.severity === 'High'));
+          if (hasCritical) {
+            riskLevel = 'Critical';
+            riskColor = '#E74C3C';
+          } else if (hasHigh) {
+            riskLevel = 'High';
+            riskColor = '#F39C12';
+          } else if (reportCount > 0) {
+            riskLevel = 'Medium';
+            riskColor = '#F7D046';
+          }
+        }
+        
+        targetCell.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div class="project-name">${project.owner_repo}</div>
+            <div style="font-size:10px; color:${riskColor}; font-weight:600; text-transform:uppercase;">${riskLevel}</div>
+          </div>
+          <div class="project-id">ID: ${project.id}</div>
+          <div style="font-size:11px; color:var(--ice-300); margin-bottom:12px;">Last scan: ${lastScan}</div>
           <div class="project-stats">
+            <div class="stat-item">
+              <div class="stat-value">${contractCount}</div>
+              <div class="stat-label">Contracts</div>
+            </div>
             <div class="stat-item">
               <div class="stat-value">${branchCount}</div>
               <div class="stat-label">Branches</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">${testCount}</div>
-              <div class="stat-label">Tests</div>
+              <div class="stat-value">${reportCount}</div>
+              <div class="stat-label">Reports</div>
             </div>
           </div>
         `;
         
-        projectCell.onclick = () => {
+        targetCell.onclick = () => {
           window.location.href = `/project/${encodeURIComponent(project.id)}`;
         };
-        
-        container.appendChild(projectCell);
-        
-        // Move to next position
-        col += 3;
-        if (col > 10) {
-          col = 1;
-          row += 2;
-        }
-      });
-    }
-    
-    // Check for audit in progress
-    async function checkAuditStatus() {
-      try {
-        const response = await fetch('/api/quick/status');
-        const data = await response.json();
-        
-        const banner = document.getElementById('processingBanner');
-        if (data.current_audit && 
-            (data.current_audit.status === 'cloning' || 
-             data.current_audit.status === 'running' || 
-             data.current_audit.status === 'processing')) {
-          banner.classList.add('active');
-        } else {
-          banner.classList.remove('active');
-        }
-      } catch (error) {
-        console.error('Status check failed:', error);
       }
+      
+      // Move to next position
+      col += 3;
+      if (col > 10) {
+        col = 1;
+        row += 2;
+      }
+    });
+  }
+  
+  // Check for audit in progress
+  async function checkAuditStatus() {
+    try {
+      const response = await fetch('/api/quick/status');
+      const data = await response.json();
+      
+      const banner = document.getElementById('processingBanner');
+      if (data.current_audit && 
+          (data.current_audit.status === 'cloning' || 
+           data.current_audit.status === 'running' || 
+           data.current_audit.status === 'processing')) {
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Status check failed:', error);
     }
-    
-    // Initial load
-    loadProjects(true);
+  }
+  
+  // Initial load
+  loadProjects(true);
+  checkAuditStatus();
+  
+  // Periodic updates
+  setInterval(() => {
     checkAuditStatus();
-    
-    // Periodic updates
-    setInterval(() => {
-      checkAuditStatus();
-      loadProjects(true);
-    }, 5000);
-  </script>
-</body>
-</html>
+    loadProjects(true);
+  }, 5000);
+</script>
+{% endblock %}

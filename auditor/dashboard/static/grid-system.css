@@ -1,0 +1,306 @@
+/* UATU AUDIT GRID SYSTEM - CONSISTENT ACROSS ALL PAGES */
+
+:root{
+  /* Color palette */
+  --ink-900:#0B1B2B;
+  --slate-800:#102132;
+  --grid-line:rgba(84, 130, 158, .4);
+  --halo-gold:#F7D046;
+  --mint-400:#4CE3B8;
+  --ice-100:#F2F7FB;
+  --ice-200:#D5E4F0;
+  --ice-300:#9CB4C6;
+  --danger:#E74C3C;
+  --success:#27AE60;
+  --warn:#F39C12;
+  
+  /* Typography */
+  --font-display:'Inter', system-ui, sans-serif;
+  --font-body:'Inter', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+}
+
+/* Reset */
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%; overflow:hidden;}
+body{
+  font-family:var(--font-body); 
+  color:var(--ice-200); 
+  background:var(--ink-900);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* GRID CONTAINER - ALWAYS 12x8 FULL VIEWPORT */
+.grid-container{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
+  display:grid;
+  grid-template-columns:repeat(12, 1fr);
+  grid-template-rows:repeat(8, 1fr);
+  gap:2px;
+}
+
+/* BASE GRID CELL - EVERY CELL HAS THIS */
+.grid-cell{
+  background:rgba(16, 33, 50, 0.2);
+  border:1px solid var(--grid-line);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  overflow:hidden;
+  transition:all 0.2s ease;
+  position:relative;
+}
+
+/* Interactive hover effects */
+.grid-cell.interactive:hover{
+  border-color:var(--halo-gold);
+  border-width:2px;
+  transform:scale(1.01);
+  z-index:10;
+  box-shadow:0 0 15px rgba(247,208,70,.3);
+  cursor:pointer;
+}
+
+/* STANDARD HEADER COMPONENTS */
+/* Logo cell - 2 grids wide (columns 1-3) */
+.logo-cell{
+  grid-column:1/3;
+  grid-row:1/2;
+  background:transparent;
+  border:2px solid var(--grid-line);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.logo-cell img{
+  width:80px;
+  height:80px;
+}
+
+/* Back button cell - 2 grids wide (columns 1-3) when showing back button */
+.back-cell{
+  grid-column:1/3;
+  grid-row:1/2;
+  background:transparent;
+  border:2px solid var(--grid-line);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--ice-300);
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  transition:all 0.2s;
+}
+
+.back-cell:hover{
+  border-color:var(--mint-400);
+  color:var(--mint-400);
+}
+
+/* Menu cells - individual grid cells for future menu items */
+.menu-cell{
+  background:transparent;
+  border:1px solid var(--grid-line);
+  opacity:0.3;
+}
+
+/* Title/Header area - spans across header spacer */
+.header-title-cell{
+  grid-column:4/11;
+  grid-row:1/2;
+  flex-direction:row;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px;
+  background:transparent;
+  border:none;
+}
+
+.header-title-cell.with-back{
+  grid-column:3/11;
+}
+
+/* Wallet cell - 2 grids wide (columns 11-13) - matches landing page */
+.wallet-cell{
+  grid-column:11/13;
+  grid-row:1/2;
+  background:var(--halo-gold);
+  color:var(--ink-900);
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  border:2px solid var(--grid-line);
+  border-radius:8px;
+  margin:8px;
+  transition:all 0.3s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.wallet-cell:hover{
+  background:var(--halo-gold) !important;
+  color:var(--ink-900) !important;
+  border-color:var(--halo-gold);
+  margin:0;
+  border-radius:0;
+  transform:scale(1.02);
+  font-size:16px;
+  font-weight:800;
+  box-shadow:0 0 20px rgba(247,208,70,.4);
+}
+
+.wallet-cell:hover::before{
+  content:"🔗";
+  font-size:18px;
+  margin-right:4px;
+}
+
+/* Connected wallet display - same size as wallet cell */
+.wallet-connected{
+  grid-column:11/13;
+  grid-row:1/2;
+  background: transparent;
+  border: 2px solid var(--grid-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.wallet-info-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+}
+
+.wallet-address-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-icon {
+  width: 8px;
+  height: 8px;
+  background: var(--mint-400);
+  border-radius: 50%;
+}
+
+.wallet-address{
+  font-family:var(--font-mono);
+  color:var(--mint-400);
+  font-size:14px;
+  letter-spacing: 0.5px;
+}
+
+.wallet-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.network-badge {
+  font-size: 10px;
+  color: var(--ice-300);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.exit-btn {
+  background: transparent;
+  border: 1px solid #EF4444;
+  color: #EF4444;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  min-width: 20px;
+  height: 20px;
+}
+
+.exit-btn:hover {
+  background: #EF4444;
+  color: white;
+}
+
+/* UTILITY CLASSES */
+/* Hide borders for cells under merged components */
+.hidden-cell{
+  border:none !important;
+  background:transparent !important;
+  display:none !important;
+}
+
+/* For elements that span multiple grid cells */
+.grid-span{
+  position:absolute;
+  z-index:10;
+}
+
+/* Ensure proper grid merging */
+.grid-container .grid-cell[style*="grid-column:1/4"] ~ .grid-cell[style*="grid-column:2/3"],
+.grid-container .grid-cell[style*="grid-column:1/4"] ~ .grid-cell[style*="grid-column:3/4"]{
+  display:none;
+}
+
+/* Page titles */
+.page-title{
+  font-size:24px;
+  font-weight:700;
+  color:var(--ice-100);
+}
+
+/* Action buttons */
+.action-btn{
+  background:var(--halo-gold);
+  color:var(--ink-900);
+  border:none;
+  padding:8px 16px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+  cursor:pointer;
+  transition:all 0.2s;
+  text-decoration:none;
+  display:inline-block;
+}
+
+.action-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(247,208,70,0.4);
+}
+
+/* Back button styling */
+.back-btn{
+  background:rgba(16, 33, 50, 0.4);
+  text-decoration:none;
+  color:var(--ice-300);
+  font-size:14px;
+  font-weight:600;
+}
+
+.back-btn:hover{
+  border-color:var(--mint-400);
+  color:var(--mint-400);
+}

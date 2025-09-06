@@ -86,15 +86,18 @@ async def runs_page(request: Request):
                 if branches_dir.exists():
                     for branch_dir in branches_dir.iterdir():
                         if branch_dir.is_dir():
-                            # Check if branch has source files
-                            has_source = len(list(branch_dir.rglob("*.sol"))) > 0
+                            # Count contract files (not all source files)
+                            contract_files = len(list(branch_dir.rglob("contracts/*.sol")))
+                            if contract_files == 0:
+                                contract_files = len(list(branch_dir.rglob("*.sol")))
+                                
                             # Check if branch has test cases
-                            has_tests = len(list(branch_dir.rglob("test/*.sol"))) > 0 or len(list(branch_dir.rglob("tests/*.sol"))) > 0
+                            test_count = len(list(branch_dir.rglob("test/*.sol"))) + len(list(branch_dir.rglob("tests/*.sol")))
                             
                             project_info['branches'].append({
                                 'name': branch_dir.name,
-                                'has_source': has_source,
-                                'has_tests': has_tests
+                                'contract_count': contract_files,
+                                'test_count': test_count
                             })
                 
                 projects.append(project_info)
@@ -114,6 +117,7 @@ async def runs_page(request: Request):
     return templates.TemplateResponse("projects.html", {
         "request": request,
         "user": user,
+        "show_back_button": False,
         "projects": projects
     })
 
@@ -133,12 +137,76 @@ async def run_detail(request: Request, ts: str):
 # Landing page
 async def landing_page(request: Request):
     """Landing page."""
-    return templates.TemplateResponse("landing.html", {"request": request})
+    user = get_current_user(request)
+    
+    # Check for wallet authentication 
+    if not user and request.session.get('authenticated') and request.session.get('wallet_address'):
+        # Use GitHub user if available, otherwise create wallet-specific user
+        if 'user' in request.session:
+            session_user = request.session['user']
+            if isinstance(session_user, dict) and session_user.get('login'):
+                user = session_user.copy()
+                user['wallet_address'] = request.session['wallet_address']
+            else:
+                user = {
+                    'login': f"wallet_{request.session['wallet_address'][:8]}",
+                    'email': None,
+                    'name': f"User {request.session['wallet_address'][:8]}",
+                    'wallet_address': request.session['wallet_address']
+                }
+        else:
+            user = {
+                'login': f"wallet_{request.session['wallet_address'][:8]}",
+                'email': None, 
+                'name': f"User {request.session['wallet_address'][:8]}",
+                'wallet_address': request.session['wallet_address']
+            }
+    
+    return templates.TemplateResponse("landing.html", {
+        "request": request,
+        "user": user,
+        "show_back_button": False
+    })
 
 # Projects page
 async def projects_page(request: Request):
     """Projects page."""
     return await runs_page(request)  # Use same logic as runs_page
+
+# GitHub connect page
+async def github_connect_page(request: Request):
+    """GitHub connect page."""
+    user = get_current_user(request)
+    
+    # Check for wallet authentication 
+    if not user and request.session.get('authenticated') and request.session.get('wallet_address'):
+        # Use GitHub user if available, otherwise create wallet-specific user
+        if 'user' in request.session:
+            session_user = request.session['user']
+            if isinstance(session_user, dict) and session_user.get('login'):
+                user = session_user.copy()
+                user['wallet_address'] = request.session['wallet_address']
+            else:
+                user = {
+                    'login': f"wallet_{request.session['wallet_address'][:8]}",
+                    'email': None,
+                    'name': f"User {request.session['wallet_address'][:8]}",
+                    'wallet_address': request.session['wallet_address']
+                }
+        else:
+            user = {
+                'login': f"wallet_{request.session['wallet_address'][:8]}",
+                'email': None, 
+                'name': f"User {request.session['wallet_address'][:8]}",
+                'wallet_address': request.session['wallet_address']
+            }
+    
+    return templates.TemplateResponse("github_connect.html", {
+        "request": request,
+        "user": user,
+        "show_back_button": True,
+        "back_url": "/"
+    })
 
 # Portfolio page
 async def portfolio_page(request: Request):
@@ -354,20 +422,26 @@ async def project_detail(request: Request, project_name: str):
     if branches_dir.exists():
         for branch_dir in branches_dir.iterdir():
             if branch_dir.is_dir():
-                # Count source and test files
-                source_count = len(list(branch_dir.rglob("*.sol")))
-                test_count = len(list(branch_dir.rglob("test*.sol")))
+                # Count contract files properly
+                contract_count = len(list(branch_dir.rglob("contracts/*.sol")))
+                if contract_count == 0:
+                    contract_count = len(list(branch_dir.rglob("*.sol")))
+                
+                # Count test files
+                test_count = len(list(branch_dir.rglob("test/*.sol"))) + len(list(branch_dir.rglob("tests/*.sol")))
                 
                 project_info['branches'].append({
                     'name': branch_dir.name,
-                    'source_count': source_count,
+                    'source_count': contract_count,
                     'test_count': test_count
                 })
     
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "user": user,
-        "project": project_info
+        "project": project_info,
+        "show_back_button": True,
+        "back_url": "/projects"
     })
 
 async def debug_workspace(request: Request):
@@ -553,6 +627,76 @@ async def api_test_delete(request: Request):
             return JSONResponse({"success": True, "message": "Test deleted successfully"})
         else:
             return JSONResponse({"error": "Test file not found"}, status_code=404)
+        
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# Automated audit API endpoint
+async def api_audit_run(request: Request):
+    """API endpoint to run automated AI audit for a specific branch."""
+    user = get_current_user(request)
+    
+    # Check for wallet authentication
+    if not user and request.session.get('authenticated') and request.session.get('wallet_address'):
+        wallet_address = request.session['wallet_address']
+        user = {
+            'login': f"wallet_{wallet_address[:8]}",
+            'email': None,
+            'name': f"Wallet User {wallet_address[:8]}",
+            'wallet_address': wallet_address
+        }
+    
+    if not user:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    
+    try:
+        body = await request.json()
+        project_name = body.get('project')
+        branch_name = body.get('branch')
+        
+        if not all([project_name, branch_name]):
+            return JSONResponse({"error": "Missing project or branch"}, status_code=400)
+        
+        # Import audit functions from the existing audit system
+        from ..runners.forge_runner import run_audit_from_local_project
+        from datetime import datetime
+        import uuid
+        
+        # Generate audit ID
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        audit_id = f"{project_name}_{branch_name}_{timestamp}_{uuid.uuid4().hex[:8]}"
+        
+        # Get project directory
+        user_workspace = get_user_workspace(user.get('login'))
+        project_dir = user_workspace / "projects" / project_name / "branches" / branch_name
+        
+        if not project_dir.exists():
+            return JSONResponse({"error": "Project branch not found"}, status_code=404)
+        
+        # Run the automated audit in background
+        background_tasks = BackgroundTasks()
+        background_tasks.add_task(
+            run_audit_from_local_project,
+            str(project_dir),
+            audit_id,
+            user.get('login')
+        )
+        
+        # Store audit info in session
+        request.session['current_audit'] = {
+            'id': audit_id,
+            'project': project_name,
+            'branch': branch_name,
+            'user': user.get('login'),
+            'status': 'starting',
+            'created_at': datetime.now().isoformat()
+        }
+        
+        return JSONResponse({
+            "success": True,
+            "audit_id": audit_id,
+            "message": "AI audit started successfully"
+        })
         
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

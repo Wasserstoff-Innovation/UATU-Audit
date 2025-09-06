@@ -22,12 +22,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from .security import setup_sessions
 from .views import (
     github_auth, auth_callback, logout,
-    runs_page, run_detail, portfolio_page, projects_page,
+    runs_page, run_detail, portfolio_page, projects_page, github_connect_page,
     download_pdf, download_portfolio_pdf, download_csv,
     health_check, debug_workspace, landing_page, onboarding_repos, api_github_repos, api_github_branches, 
     api_audit_status, api_quick_status, api_list_user_audits, test_endpoint, test_oauth, setup_project,
     api_run_status, api_run_logs, api_projects, api_project_runs,
-    project_detail, branch_detail, api_test_save, api_test_run, api_test_delete
+    project_detail, branch_detail, api_test_save, api_test_run, api_test_delete, api_audit_run
 )
 # Temporarily disable wallet auth imports until dependencies are installed
 # from .wallet_auth import authenticate_wallet, link_github_to_wallet, logout_user
@@ -51,7 +51,8 @@ app.mount("/static", StaticFiles(directory="auditor/dashboard/static"), name="st
 # Routes
 app.add_api_route("/", landing_page, methods=["GET"])  # Landing page as main entry
 app.add_api_route("/dashboard", runs_page, methods=["GET"])  # Dashboard requires auth
-app.add_api_route("/projects", projects_page, methods=["GET"])  # Projects page
+app.add_api_route("/projects", projects_page, methods=["GET"])
+app.add_api_route("/github-connect", github_connect_page, methods=["GET"])  # Projects page
 app.add_api_route("/auth/github", github_auth, methods=["GET"])
 app.add_api_route("/auth/callback", auth_callback, methods=["GET"])
 app.add_api_route("/logout", logout, methods=["GET"])
@@ -84,6 +85,9 @@ app.add_api_route("/project/{project_name}/branch/{branch_name}", branch_detail,
 app.add_api_route("/api/test/save", api_test_save, methods=["POST"])
 app.add_api_route("/api/test/run", api_test_run, methods=["POST"])
 app.add_api_route("/api/test/delete", api_test_delete, methods=["DELETE"])
+
+# Automated audit API routes
+app.add_api_route("/api/audit/run", api_audit_run, methods=["POST"])
 
 # Temporarily create simple wallet auth endpoints
 from fastapi import HTTPException

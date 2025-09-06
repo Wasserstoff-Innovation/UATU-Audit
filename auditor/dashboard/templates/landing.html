@@ -1,12 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>UatuAudit — Ship with certainty</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
+{% extends "base.html" %}
+
+{% block title %}UatuAudit — Ship with certainty{% endblock %}
+
+{% set show_back_button = false %}
+
+{% block extra_styles %}
+<style>
     :root{
       /* Color palette */
       --ink-900:#0B1B2B;
@@ -72,18 +71,7 @@
       box-shadow:0 0 15px rgba(247,208,70,.3);
     }
     
-    /* Logo cell - bigger (3 grids wide) */
-    .logo-cell{
-      grid-column:1/4;
-      grid-row:1/2;
-      background:transparent;
-      border:2px solid var(--grid-line);
-    }
-    
-    .logo-cell img{
-      width:120px;
-      height:120px;
-    }
+    /* Logo cell - uses common styling from grid-system.css */
     
     /* Connect Wallet button */
     .wallet-cell{
@@ -346,26 +334,9 @@
     }
     
   </style>
-</head>
-<body>
-  <div class="grid-container">
-    <!-- Row 1 - Header -->
-    <div class="grid-cell logo-cell no-hover">
-      <img src="/static/uatu-logo.svg" alt="UatuAudit">
-    </div>
-    
-    <!-- Header empty squares (4 → 10) -->
-    <div class="grid-cell fill-cell no-hover" style="grid-column:4/5; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:5/6; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:6/7; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:7/8; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:8/9; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:9/10; grid-row:1/2;"></div>
-    <div class="grid-cell fill-cell no-hover" style="grid-column:10/11; grid-row:1/2;"></div>
-    
-    <div class="grid-cell wallet-cell interactive" id="connectWallet">
-      Connect Wallet
-    </div>
+{% endblock %}
+
+{% block main_content %}
     
     <!-- Main headline area -->
     <div class="grid-cell headline-cell no-hover">
@@ -480,23 +451,23 @@
     <div class="grid-cell fill-cell accent no-hover" style="grid-column:11/12; grid-row:8/9;"></div>
     <div class="grid-cell fill-cell no-hover" style="grid-column:12/13; grid-row:8/9;"></div>
   </div>
+{% endblock %}
 
-  <script>
-    // Wallet connection with Base blockchain
+{% block scripts %}
+<script>
+    // Simple wallet connection check
     let walletConnected = false;
     let userAddress = null;
-    let sessionData = null;
     
     // Check for existing session on page load
     function checkExistingSession() {
       const storedSession = localStorage.getItem('uatu_session');
       if (storedSession) {
         try {
-          sessionData = JSON.parse(storedSession);
+          const sessionData = JSON.parse(storedSession);
           const expiresAt = new Date(sessionData.expires_at);
           
           if (expiresAt > new Date()) {
-            // Session is still valid
             walletConnected = true;
             userAddress = sessionData.wallet_address;
             
@@ -504,537 +475,32 @@
             const connectBtn = document.getElementById('connectWallet');
             if (connectBtn) {
               connectBtn.textContent = userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
-              connectBtn.onclick = () => showOnboardingScreen();
+              connectBtn.onclick = () => window.location.href = '/dashboard';
             }
-            
             return true;
           } else {
-            // Session expired
             localStorage.removeItem('uatu_session');
           }
-        } catch (e) {
-          console.error('Invalid session data:', e);
+        } catch (error) {
           localStorage.removeItem('uatu_session');
         }
       }
       return false;
     }
     
-    // Navigate to dashboard if already connected
-    function navigateToDashboard() {
-      if (sessionData) {
-        // Add session headers for authenticated requests
-        fetch('/dashboard', {
-          headers: {
-            'Authorization': `Bearer ${sessionData.session_id}`
-          }
-        }).then(response => {
-          if (response.ok) {
-            window.location.href = '/dashboard';
-          }
-        }).catch(console.error);
-      }
-    }
-    
-    // Base blockchain configuration
-    const BASE_CHAIN_ID = '0x2105'; // Base mainnet
-    const BASE_CHAIN_CONFIG = {
-      chainId: BASE_CHAIN_ID,
-      chainName: 'Base',
-      nativeCurrency: {
-        name: 'Ethereum',
-        symbol: 'ETH',
-        decimals: 18
-      },
-      rpcUrls: ['https://mainnet.base.org'],
-      blockExplorerUrls: ['https://basescan.org']
-    };
-    
-    // Connect wallet function with proper authentication
-    async function connectWallet() {
-      if (typeof window.ethereum !== 'undefined') {
-        try {
-          // Request account access
-          const accounts = await window.ethereum.request({
-            method: 'eth_requestAccounts'
-          });
-          
-          // Check if connected to Base chain
-          const chainId = await window.ethereum.request({
-            method: 'eth_chainId'
-          });
-          
-          if (chainId !== BASE_CHAIN_ID) {
-            // Switch to Base chain
-            try {
-              await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: BASE_CHAIN_ID }]
-              });
-            } catch (switchError) {
-              // Add Base chain if not added
-              if (switchError.code === 4902) {
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [BASE_CHAIN_CONFIG]
-                });
-              }
-            }
-          }
-          
-          userAddress = accounts[0];
-          
-          // Create authentication message
-          const message = `UatuAudit Login\nWallet: ${userAddress}\nTimestamp: ${Date.now()}`;
-          
-          // Sign message for authentication
-          const signature = await window.ethereum.request({
-            method: 'personal_sign',
-            params: [message, userAddress]
-          });
-          
-          // Authenticate with backend
-          const authResponse = await fetch('/api/auth/wallet', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              wallet_address: userAddress,
-              message: message,
-              signature: signature
-            })
-          });
-          
-          if (!authResponse.ok) {
-            throw new Error('Authentication failed');
-          }
-          
-          const authData = await authResponse.json();
-          
-          // Store session data
-          localStorage.setItem('uatu_session', JSON.stringify({
-            session_id: authData.session_id,
-            wallet_address: userAddress,
-            user: authData.user,
-            expires_at: authData.expires_at
-          }));
-          
-          walletConnected = true;
-          
-          // Update UI
-          document.getElementById('connectWallet').textContent = 
-            userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
-          
-          // Show onboarding screen
-          showOnboardingScreen();
-          
-        } catch (error) {
-          console.error('Wallet connection failed:', error);
-          alert('Failed to connect wallet. Please try again.');
-        }
-      } else {
-        alert('Please install MetaMask or another Web3 wallet to continue.');
-      }
-    }
-    
-    // Show onboarding screen
-    function showOnboardingScreen() {
-      document.body.innerHTML = `
-        <div class="grid-container">
-          <!-- Header with back button -->
-          <div class="grid-cell back-button interactive" style="grid-column:1/2; grid-row:1/2;" onclick="goBack()">
-            ← Back
-          </div>
-          
-          <!-- Header empty squares (2 → 10) to keep header strictly square -->
-          ${[...Array(9)].map((_,i)=>`<div class=\"grid-cell fill-cell no-hover\" style=\"grid-column:${2+i}/${3+i}; grid-row:1/2;\"></div>`).join('')}
-          
-          <!-- Top right corner - merged 2-grid wallet area -->
-          <div class="grid-cell wallet-area-merged" style="grid-column:11/13; grid-row:1/2;">
-            <div class="wallet-container">
-              <div class="wallet-content">
-                <!-- Top row: Address with icon -->
-                <div class="wallet-row">
-                  <span class="wallet-icon">🔒</span>
-                  <span class="wallet-address">${userAddress.slice(0, 6) + '...' + userAddress.slice(-4)}</span>
-                </div>
-                <!-- Bottom row: Network and disconnect -->
-                <div class="wallet-row">
-                  <span class="network-label">BASE NETWORK</span>
-                  <button class="disconnect-btn" onclick="disconnectWallet()">
-                    <span>✕</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Main onboarding content - properly sized to match grid -->
-          <div class="grid-cell onboarding-main" style="grid-column:3/11; grid-row:3/7;">
-            <h2 style="color:var(--ice-100); font-size:28px; margin-bottom:32px; text-align:center;">Connect GitHub</h2>
-            
-            <!-- Error message section -->
-            <div id="errorMessage" style="display: none; background: rgba(211, 47, 47, 0.1); border: 1px solid #d32f2f; color: #d32f2f; padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
-                <p id="errorText"></p>
-            </div>
-            
-            <div class="github-connect-section">
-              <button id="connectGitHub" class="github-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-right:12px;">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                </svg>
-                Connect GitHub Account
-              </button>
-              
-              <div style="text-align: center; margin-top: 16px;">
-                <a href="/dashboard" class="skip-button" style="color: var(--ice-300); text-decoration: none; font-size: 14px; border-bottom: 1px solid var(--ice-300); padding-bottom: 2px;">
-                  Skip to Dashboard →
-                </a>
-              </div>
-              
-              <div id="repoSelection" class="repo-selection" style="display:none;">
-                <h3 style="color:var(--ice-100); margin:24px 0 16px;">Select Repository</h3>
-                <select id="repoSelect" class="repo-select">
-                  <option>Loading repositories...</option>
-                </select>
-                
-                <h3 style="color:var(--ice-100); margin:24px 0 16px;">Select Branch</h3>
-                <select id="branchSelect" class="branch-select">
-                  <option>Select repository first</option>
-                </select>
-                
-                <button id="startAuditBtn" class="start-audit-btn" style="display:none;">
-                  Start Security Audit
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Fill remaining cells -->
-          ${generateFillCells()}
-        </div>
-        
-        <style>
-          .back-button {
-            background:rgba(247, 208, 70, 0.08);
-            border:2px solid var(--grid-line);
-            color:var(--ice-200);
-            cursor:pointer;
-            font-weight:600;
-          }
-          
-          .back-button:hover {
-            background:var(--halo-gold);
-            color:var(--ink-900) !important;
-            border-color:var(--halo-gold);
-            transform:scale(1.02);
-            box-shadow:0 0 15px rgba(247, 208, 70, 0.4);
-            font-weight:700;
-          }
-          
-          .wallet-area-merged {
-            background:rgba(16, 33, 50, 0.2);
-            border:2px solid var(--grid-line);
-            padding:0;
-            position:relative;
-            overflow:visible;
-          }
-          
-          .wallet-container {
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            height:100%;
-            padding:0 16px;
-          }
-          
-          .wallet-content {
-            display:flex;
-            flex-direction:column;
-            gap:6px;
-            width:100%;
-          }
-          
-          .wallet-row {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:8px;
-          }
-          
-          .wallet-row:first-child {
-            justify-content:center;
-          }
-          
-          .wallet-icon {
-            font-size:14px;
-            opacity:0.8;
-          }
-          
-          .wallet-address {
-            color:var(--halo-gold);
-            font-family:var(--font-mono);
-            font-weight:600;
-            font-size:13px;
-            text-shadow:0 0 8px rgba(247, 208, 70, 0.2);
-          }
-          
-          .network-label {
-            color:var(--ice-300);
-            font-size:9px;
-            font-weight:700;
-            letter-spacing:1.2px;
-            text-transform:uppercase;
-            opacity:0.6;
-          }
-          
-          .disconnect-btn {
-            background:transparent;
-            border:1px solid rgba(247, 208, 70, 0.2);
-            border-radius:3px;
-            padding:2px 6px;
-            cursor:pointer;
-            font-size:12px;
-            transition:all 0.2s ease;
-            color:var(--ice-300);
-            line-height:1;
-          }
-          
-          .disconnect-btn:hover {
-            background:rgba(255, 100, 100, 0.2);
-            border-color:rgba(255, 100, 100, 0.5);
-            color:#ff6464;
-            transform:scale(1.1);
-          }
-          
-          
-          .onboarding-main {
-            background:rgba(16, 33, 50, 0.3);
-            border:2px solid var(--grid-line);
-            padding:48px;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-          }
-          
-          .github-connect-section {
-            width:100%;
-            max-width:500px;
-          }
-          
-          .github-button {
-            width:100%;
-            padding:16px 24px;
-            background:var(--halo-gold);
-            color:var(--ink-900);
-            border:none;
-            border-radius:8px;
-            font-size:18px;
-            font-weight:700;
-            cursor:pointer;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            transition:all 0.2s ease;
-            box-shadow:0 4px 12px rgba(247,208,70,.3);
-          }
-          
-          .github-button:hover {
-            background:var(--ink-900);
-            color:var(--halo-gold);
-            transform:translateY(-2px);
-            box-shadow:0 6px 20px rgba(247,208,70,.4);
-          }
-          
-          .repo-select, .branch-select {
-            width:100%;
-            padding:12px 16px;
-            background:var(--slate-800);
-            color:var(--ice-200);
-            border:2px solid var(--grid-line);
-            border-radius:6px;
-            font-size:16px;
-            margin-bottom:16px;
-          }
-          
-          .start-audit-btn {
-            width:100%;
-            padding:16px 24px;
-            background:var(--mint-400);
-            color:var(--ink-900);
-            border:none;
-            border-radius:8px;
-            font-size:18px;
-            font-weight:600;
-            cursor:pointer;
-            margin-top:24px;
-          }
-          
-          .start-audit-btn:hover {
-            background:var(--ink-900);
-            color:var(--mint-400);
-          }
-          
-          .exit-dropdown {
-            background:rgba(16, 33, 50, 0.2);
-            border:2px solid var(--grid-line);
-            padding:8px;
-          }
-          
-          .exit-dropdown select {
-            width:100%;
-            background:transparent;
-            color:var(--ice-200);
-            border:none;
-            font-size:16px;
-            cursor:pointer;
-          }
-        </style>
-      `;
-      
-      // Add GitHub connection functionality
-      setupGitHubConnection();
-    }
-    
-    // Generate fill cells for grid
-    function generateFillCells() {
-      let cells = '';
-      // Fill remaining grid cells
-      for (let row = 1; row <= 8; row++) {
-        for (let col = 1; col <= 12; col++) {
-          if (!isOccupiedCell(col, row)) {
-            const bgClass = Math.random() > 0.7 ? (Math.random() > 0.5 ? 'accent' : 'gold') : '';
-            cells += `<div class="grid-cell fill-cell ${bgClass} no-hover" style="grid-column:${col}/${col+1}; grid-row:${row}/${row+1};"></div>`;
-          }
-        }
-      }
-      return cells;
-    }
-    
-    // Check if grid cell is occupied
-    function isOccupiedCell(col, row) {
-      // Back button
-      if (col === 1 && row === 1) return true;
-      // Header squares are not occupied (auto-filled by generateFillCells)
-      // Wallet area merged (2 grids: 11-13)
-      if (col >= 11 && col <= 12 && row === 1) return true;
-      // Main onboarding area
-      if (col >= 3 && col <= 10 && row >= 3 && row <= 6) return true;
-      
-      return false;
-    }
-    
-    // Backend API configuration - loaded from environment
-    const API_BASE_URL = '{{ api_base_url or "http://localhost:8000" }}';
-    const GITHUB_CLIENT_ID = '{{ github_client_id or "" }}';
-    const GITHUB_REDIRECT_URI = '{{ github_redirect_uri or "http://localhost:8080/auth/callback" }}';
-    const FRONTEND_URL = '{{ frontend_url or "http://localhost:8080" }}';
-    const AUDIT_PRICE_USDC = {{ audit_price_usdc or 200 }};
-    const MAX_AUDIT_TIME = {{ max_audit_time or 30 }};
-    
-    // Setup GitHub connection
-    function setupGitHubConnection() {
-      document.getElementById('connectGitHub')?.addEventListener('click', async () => {
-        // Real GitHub OAuth flow - redirect in same window
-        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${GITHUB_REDIRECT_URI}&scope=user:email read:org`;
-        
-        // Redirect to GitHub OAuth in same window
-        window.location.href = githubAuthUrl;
-      });
-      
-      // For demo/testing purposes - double-click for mock audit
-      document.getElementById('connectGitHub')?.addEventListener('dblclick', () => {
-        showMockAuditOptions();
-      });
-      
-      // Repository selection handler
-      document.getElementById('repoSelect')?.addEventListener('change', (e) => {
-        if (e.target.value) {
-          const token = localStorage.getItem('github_token');
-          loadGitHubBranches(token, e.target.value);
-        }
-      });
-      
-      // Branch selection handler
-      document.getElementById('branchSelect')?.addEventListener('change', (e) => {
-        if (e.target.value) {
-          document.getElementById('startAuditBtn').style.display = 'block';
-        }
-      });
-      
-      // Start audit handler
-      document.getElementById('startAuditBtn')?.addEventListener('click', () => {
-        const repo = document.getElementById('repoSelect').value;
-        const branch = document.getElementById('branchSelect').value;
-        alert(`Starting audit for ${repo}/${branch}...`);
-      });
-    }
-    
-    // Disconnect wallet function
-    function disconnectWallet() {
-      if (confirm('Disconnect wallet?')) {
-        localStorage.removeItem('github_token');
-        walletConnected = false;
-        userAddress = null;
-        location.reload();
-      }
-    }
-
-    // Go back function
-    function goBack() {
-      location.reload();
-    }
-    
-    // Button handlers
-    document.getElementById('connectWallet')?.addEventListener('click', connectWallet);
-    
-    document.getElementById('startAudit')?.addEventListener('click', connectWallet);
+         // Initialize on page load
+         document.addEventListener('DOMContentLoaded', function() {
+           if (checkExistingSession()) {
+             // If wallet is already connected, redirect to dashboard
+             window.location.href = '/dashboard';
+           }
+         });
     
     // Social icon clicks
     document.querySelectorAll('.social-cell').forEach(cell => {
       cell.addEventListener('click', () => {
-        console.log('Social icon clicked');
+        alert('Social feature coming soon!');
       });
     });
-    
-    // Initialize session check on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      checkExistingSession();
-    });
-    
-    // Check session immediately if DOM is already loaded
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', checkExistingSession);
-    } else {
-      checkExistingSession();
-    }
-    
-    // Handle OAuth error messages
-    function showError(message) {
-      const errorDiv = document.getElementById('errorMessage');
-      const errorText = document.getElementById('errorText');
-      if (errorDiv && errorText) {
-        errorText.textContent = message;
-        errorDiv.style.display = 'block';
-      }
-    }
-    
-    // Check for error parameters in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get('error');
-    if (error) {
-      const errorMessages = {
-        'invalid_state': 'OAuth state mismatch. Please try connecting again.',
-        'no_code': 'No authorization code received from GitHub.',
-        'no_token': 'Failed to get access token from GitHub.',
-        'user_info_failed': 'Failed to get user information from GitHub.',
-        'access_denied': 'Access denied. You may not have permission to access this application.',
-        'oauth_failed': 'OAuth authentication failed. Please try again.'
-      };
-      showError(errorMessages[error] || 'An unknown error occurred during authentication.');
-    }
   </script>
-</body>
-</html>
+{% endblock %}

@@ -1,490 +1,240 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ project.name }} — UatuAudit</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      /* Color palette */
-      --ink-900:#0B1B2B;
-      --slate-800:#102132;
-      --grid-line:rgba(84, 130, 158, .4);
-      --halo-gold:#F7D046;
-      --mint-400:#4CE3B8;
-      --ice-100:#F2F7FB;
-      --ice-200:#D5E4F0;
-      --ice-300:#9CB4C6;
-      --danger:#E74C3C;
-      --success:#27AE60;
-      --warn:#F39C12;
-      
-      /* Typography */
-      --font-display:'Inter', system-ui, sans-serif;
-      --font-body:'Inter', system-ui, sans-serif;
-      --font-mono:'IBM Plex Mono', monospace;
-    }
-    
-    /* Reset */
-    *{box-sizing:border-box; margin:0; padding:0;}
-    html,body{height:100%; overflow:hidden;}
-    body{
-      font-family:var(--font-body); 
-      color:var(--ice-200); 
-      background:var(--ink-900);
-      -webkit-font-smoothing:antialiased;
-    }
-    
-    /* Grid container - 12x8 grid */
-    .grid-container{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100vw;
-      height:100vh;
-      display:grid;
-      grid-template-columns:repeat(12, 1fr);
-      grid-template-rows:repeat(8, 1fr);
-      gap:2px;
-    }
-    
-    /* Base grid cell */
-    .grid-cell{
-      background:rgba(16, 33, 50, 0.2);
-      border:1px solid var(--grid-line);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      overflow:hidden;
-      transition:all 0.2s ease;
-      position:relative;
-    }
-    
-    /* Interactive hover effects */
-    .grid-cell.interactive:hover{
-      border-color:var(--halo-gold);
-      border-width:2px;
-      transform:scale(1.01);
-      z-index:10;
-      box-shadow:0 0 15px rgba(247,208,70,.3);
-      cursor:pointer;
-    }
-    
-    /* Logo cell - top left */
-    .logo-cell{
-      grid-column:1/3;
-      grid-row:1/2;
-      background:transparent;
-      border:2px solid var(--grid-line);
-      cursor:pointer;
-    }
-    
-    .logo-cell img{
-      width:80px;
-      height:80px;
-    }
-    
-    /* Project header */
-    .project-header{
-      grid-column:3/10;
-      grid-row:1/2;
-      flex-direction:column;
-      justify-content:center;
-      align-items:flex-start;
-      padding:20px;
-    }
-    
-    .project-title{
-      font-size:24px;
-      font-weight:700;
-      color:var(--ice-100);
-      margin-bottom:4px;
-    }
-    
-    .project-breadcrumb{
-      font-size:12px;
-      color:var(--ice-300);
-      font-family:var(--font-mono);
-    }
-    
-    /* Back button */
-    .back-cell{
-      grid-column:10/11;
-      grid-row:1/2;
-      background:rgba(16, 33, 50, 0.4);
-      text-decoration:none;
-      color:var(--ice-300);
-      font-size:14px;
-      font-weight:600;
-    }
-    
-    .back-cell:hover{
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-    
-    /* User info */
-    .user-cell{
-      grid-column:11/13;
-      grid-row:1/2;
-      background:rgba(16, 33, 50, 0.4);
-      font-size:13px;
-      justify-content:space-around;
-      padding:12px;
-    }
-    
-    /* Branch cells */
-    .branch-cell{
-      background:rgba(16, 33, 50, 0.4);
-      border:1px solid var(--grid-line);
-      padding:20px;
-      align-items:flex-start;
-      justify-content:flex-start;
-      position:relative;
-    }
-    
-    .branch-cell:hover{
-      border-color:var(--mint-400);
-      background:rgba(76, 227, 184, 0.05);
-    }
-    
-    .branch-name{
-      font-size:18px;
-      font-weight:600;
-      color:var(--ice-100);
-      margin-bottom:12px;
-      width:100%;
-    }
-    
-    .branch-stats{
-      display:flex;
-      gap:20px;
-      width:100%;
-      margin-bottom:16px;
-    }
-    
-    .stat-item{
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    
-    .stat-icon{
-      width:16px;
-      height:16px;
-      opacity:0.7;
-    }
-    
-    .stat-value{
-      font-size:14px;
-      color:var(--ice-300);
-    }
-    
-    .branch-actions{
-      display:flex;
-      gap:12px;
-      width:100%;
-      margin-top:auto;
-    }
-    
-    .action-btn{
-      background:transparent;
-      border:1px solid var(--grid-line);
-      color:var(--ice-300);
-      padding:6px 12px;
-      border-radius:4px;
-      font-size:13px;
-      font-weight:500;
-      cursor:pointer;
-      transition:all 0.2s;
-      text-decoration:none;
-      display:inline-block;
-    }
-    
-    .action-btn.primary{
-      background:var(--halo-gold);
-      color:var(--ink-900);
-      border:none;
-      font-weight:600;
-    }
-    
-    .action-btn.primary:hover{
-      transform:translateY(-2px);
-      box-shadow:0 4px 12px rgba(247,208,70,0.4);
-    }
-    
-    .action-btn:hover{
-      border-color:var(--mint-400);
-      color:var(--mint-400);
-    }
-    
-    /* Empty state */
-    .empty-state{
-      grid-column:5/9;
-      grid-row:4/6;
-      flex-direction:column;
-      padding:40px;
-      text-align:center;
-    }
-    
-    /* Create test form cell */
-    .create-test-cell{
-      grid-column:4/9;
-      grid-row:3/7;
-      background:rgba(16, 33, 50, 0.6);
-      border:2px solid var(--mint-400);
-      padding:30px;
-      display:none;
-      align-items:flex-start;
-      overflow-y:auto;
-    }
-    
-    .create-test-cell.active{
-      display:flex;
-    }
-    
-    .form-title{
-      font-size:20px;
-      font-weight:600;
-      color:var(--ice-100);
-      margin-bottom:20px;
-      width:100%;
-    }
-    
-    .form-group{
-      width:100%;
-      margin-bottom:16px;
-    }
-    
-    .form-label{
-      display:block;
-      font-size:13px;
-      color:var(--ice-300);
-      margin-bottom:6px;
-      font-weight:500;
-    }
-    
-    .form-input, .form-textarea{
-      width:100%;
-      background:var(--ink-900);
-      border:1px solid var(--grid-line);
-      color:var(--ice-100);
-      padding:8px 12px;
-      border-radius:4px;
-      font-family:var(--font-mono);
-      font-size:14px;
-    }
-    
-    .form-textarea{
-      min-height:200px;
-      resize:vertical;
-    }
-    
-    .form-actions{
-      display:flex;
-      gap:12px;
-      justify-content:flex-end;
-      width:100%;
-      margin-top:20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="grid-container">
-    <!-- Logo (top-left) -->
-    <div class="grid-cell logo-cell interactive" onclick="window.location.href='/'">
-      <img src="/static/uatu-logo.svg" alt="Uatu" />
-    </div>
-    
-    <!-- Project header -->
-    <div class="grid-cell project-header">
-      <h1 class="project-title">{{ project.name }}</h1>
-      <div class="project-breadcrumb">projects / {{ project.path }}</div>
-    </div>
-    
-    <!-- Back button -->
-    <a href="/projects" class="grid-cell back-cell interactive">
-      ← Back
-    </a>
-    
-    <!-- User info -->
-    <div class="grid-cell user-cell">
-      {% if user %}
-      <div style="font-family:var(--font-mono); color:var(--mint-400); font-size:12px;">
-        {{ user.wallet_address[:10] if user.wallet_address else user.login }}...
-      </div>
-      {% endif %}
-    </div>
-    
-    <!-- Branches section -->
-    {% if project.branches %}
-      {% for branch in project.branches %}
-        <!-- Branch cell (4 columns wide, 2 rows tall) -->
-        <div class="grid-cell branch-cell interactive" 
-             style="grid-column:{{ 1 + (loop.index0 % 3) * 4 }}/{{ 5 + (loop.index0 % 3) * 4 }}; 
-                    grid-row:{{ 2 + (loop.index0 // 3) * 2 }}/{{ 4 + (loop.index0 // 3) * 2 }};"
-             onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
-          <div class="branch-name">{{ branch.name }}</div>
-          
-          <div class="branch-stats">
-            <div class="stat-item">
-              <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 100 4h2a2 2 0 100-4 1 1 0 100-2H6a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v1h4a1 1 0 110 2H4V5z" clip-rule="evenodd"/>
-              </svg>
-              <span class="stat-value">{{ branch.source_count }} source files</span>
-            </div>
-            <div class="stat-item">
-              <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
-              </svg>
-              <span class="stat-value">{{ branch.test_count }} tests</span>
-            </div>
-          </div>
-          
-          <div class="branch-actions">
-            <button class="action-btn" onclick="event.stopPropagation(); createTest('{{ branch.name }}')">
-              + Add Test
-            </button>
-            <button class="action-btn primary" onclick="event.stopPropagation(); runTests('{{ branch.name }}')">
-              Run Tests
-            </button>
-          </div>
-        </div>
-      {% endfor %}
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} — UatuAudit{% endblock %}
+
+{% set show_back_button = true %}
+{% set back_url = '/projects' %}
+
+{% block header_content %}
+<!-- Project title in grid cells 3-8 -->
+<div class="grid-cell" style="grid-column:3/9; grid-row:1/2; display:flex; align-items:center; padding-left:20px;">
+  <div>
+    <h1 class="project-title" style="color:var(--ice-100); font-size:24px; font-weight:700; margin:0;">{{ project.name }}</h1>
+    <div class="project-breadcrumb" style="color:var(--ice-300); font-size:12px; margin-top:4px;">projects / {{ project.path }}</div>
+  </div>
+</div>
+<!-- Menu cells for spacing -->
+<div class="grid-cell menu-cell" style="grid-column:9/10; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:10/11; grid-row:1/2;"></div>
+{% endblock %}
+
+{% block main_content %}
+<!-- Fill remaining grid cells to complete 12x8 layout -->
+{% for row in range(2, 9) %}
+  {% for col in range(1, 13) %}
+    <div class="grid-cell" style="grid-column:{{ col }}/{{ col + 1 }}; grid-row:{{ row }}/{{ row + 1 }};"></div>
+  {% endfor %}
+{% endfor %}
+
+<!-- Branches section -->
+{% if project.branches %}
+  {% for branch in project.branches %}
+    {% set branch_count = project.branches|length %}
+    {% if branch_count == 1 %}
+      <!-- Single branch: use 8 columns centered, 4 rows tall -->
+      <div class="grid-cell branch-cell interactive" 
+           style="grid-column:3/11; grid-row:3/7;"
+           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
+    {% elif branch_count == 2 %}
+      <!-- Two branches: 6 columns each -->
+      <div class="grid-cell branch-cell interactive" 
+           style="grid-column:{{ 1 + loop.index0 * 6 }}/{{ 7 + loop.index0 * 6 }}; grid-row:3/6;"
+           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
     {% else %}
-      <div class="grid-cell empty-state">
-        <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🌿</div>
-        <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">
-          No branches found
-        </div>
-        <div style="font-size:14px; color:var(--ice-300);">
-          This project doesn't have any branches set up yet
-        </div>
-      </div>
+      <!-- Multiple branches: 4 columns each -->
+      <div class="grid-cell branch-cell interactive" 
+           style="grid-column:{{ 1 + (loop.index0 % 3) * 4 }}/{{ 5 + (loop.index0 % 3) * 4 }}; 
+                  grid-row:{{ 3 + (loop.index0 // 3) * 2 }}/{{ 5 + (loop.index0 // 3) * 2 }};"
+           onclick="viewBranch('{{ project.path }}', '{{ branch.name }}')">
     {% endif %}
-    
-    <!-- Create test form (hidden by default) -->
-    <div class="grid-cell create-test-cell" id="createTestForm">
-      <div class="form-title">Create New Test</div>
+      <div class="branch-name">{{ branch.name }}</div>
       
-      <div class="form-group">
-        <label class="form-label">Test Name</label>
-        <input type="text" class="form-input" id="testName" placeholder="e.g., TestOwnershipTransfer">
+      <div class="branch-stats">
+        <div class="stat-item">
+          <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 100 4h2a2 2 0 100-4 1 1 0 100-2H6a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v1h4a1 1 0 110 2H4V5z" clip-rule="evenodd"/>
+          </svg>
+          <span class="stat-value">{{ branch.source_count }} contracts</span>
+        </div>
+        <div class="stat-item">
+          <svg class="stat-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+          </svg>
+          <span class="stat-value">{{ branch.test_count }} tests</span>
+        </div>
       </div>
       
-      <div class="form-group">
-        <label class="form-label">Target Contract</label>
-        <input type="text" class="form-input" id="targetContract" placeholder="e.g., MyContract">
+      <div class="branch-actions">
+        <button class="action-btn primary" onclick="event.stopPropagation(); runAudit('{{ branch.name }}')">
+          🤖 Run AI Audit
+        </button>
+        <button class="action-btn" onclick="event.stopPropagation(); viewReport('{{ branch.name }}')">
+          📊 View Report
+        </button>
       </div>
-      
-      <div class="form-group">
-        <label class="form-label">Test Code</label>
-        <textarea class="form-textarea" id="testCode" placeholder="// Write your Solidity test code here...">// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-import "forge-std/Test.sol";
-
-contract TestExample is Test {
-    function setUp() public {
-        // Setup code
-    }
-    
-    function test_Example() public {
-        // Test code
-        assertTrue(true);
-    }
-}</textarea>
-      </div>
-      
-      <div class="form-actions">
-        <button class="action-btn" onclick="closeTestForm()">Cancel</button>
-        <button class="action-btn primary" onclick="saveTest()">Save Test</button>
-      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="grid-cell empty-state" style="grid-column:5/9; grid-row:4/6;">
+    <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🌿</div>
+    <div style="font-size:20px; font-weight:600; color:var(--ice-100); margin-bottom:8px;">
+      No branches found
+    </div>
+    <div style="font-size:14px; color:var(--ice-300);">
+      This project doesn't have any branches set up yet
     </div>
   </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+  /* Project-specific styles */
+  .project-title{
+    font-size:24px;
+    font-weight:700;
+    color:var(--ice-100);
+    margin-bottom:4px;
+  }
   
-  <script>
-    function viewBranch(project, branch) {
-      window.location.href = `/project/${project}/branch/${branch}`;
-    }
-    
-    function createTest(branch) {
-      const form = document.getElementById('createTestForm');
-      form.classList.add('active');
-      form.dataset.branch = branch;
-    }
-    
-    function closeTestForm() {
-      const form = document.getElementById('createTestForm');
-      form.classList.remove('active');
-    }
-    
-    async function saveTest() {
-      const form = document.getElementById('createTestForm');
-      const branch = form.dataset.branch;
-      const testName = document.getElementById('testName').value;
-      const testCode = document.getElementById('testCode').value;
-      
-      if (!testName || !testCode) {
-        alert('Please fill in all fields');
-        return;
-      }
-      
+  .project-breadcrumb{
+    font-size:12px;
+    color:var(--ice-300);
+    font-family:var(--font-mono);
+  }
+  
+  .branch-cell{
+    background:rgba(16, 33, 50, 0.8);
+    border:2px solid var(--grid-line);
+    padding:20px;
+    align-items:flex-start;
+    justify-content:flex-start;
+    position:relative;
+    z-index:5;
+    box-shadow:0 0 0 1px rgba(16, 33, 50, 0.8);
+  }
+  
+  .branch-cell:hover{
+    border-color:var(--mint-400);
+    background:rgba(76, 227, 184, 0.05);
+    z-index:6;
+  }
+  
+  .branch-name{
+    font-size:18px;
+    font-weight:600;
+    color:var(--ice-100);
+    margin-bottom:12px;
+    width:100%;
+  }
+  
+  .branch-stats{
+    display:flex;
+    gap:20px;
+    width:100%;
+    margin-bottom:16px;
+  }
+  
+  .stat-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  
+  .stat-icon{
+    width:16px;
+    height:16px;
+    opacity:0.7;
+  }
+  
+  .stat-value{
+    font-size:14px;
+    color:var(--ice-300);
+  }
+  
+  .branch-actions{
+    display:flex;
+    gap:12px;
+    width:100%;
+    margin-top:auto;
+  }
+  
+  .action-btn{
+    background:transparent;
+    border:1px solid var(--grid-line);
+    color:var(--ice-300);
+    padding:6px 12px;
+    border-radius:4px;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    transition:all 0.2s;
+    text-decoration:none;
+    display:inline-block;
+  }
+  
+  .action-btn.primary{
+    background:var(--halo-gold);
+    color:var(--ink-900);
+    border:none;
+    font-weight:600;
+  }
+  
+  .action-btn.primary:hover{
+    transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(247,208,70,0.4);
+  }
+  
+  .action-btn:hover{
+    border-color:var(--mint-400);
+    color:var(--mint-400);
+  }
+  
+  .empty-state{
+    flex-direction:column;
+    padding:40px;
+    text-align:center;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function viewBranch(project, branch) {
+    window.location.href = `/project/${project}/branch/${branch}`;
+  }
+  
+  async function runAudit(branch) {
+    if (confirm(`Start AI audit for ${branch}? This will automatically generate tests and run security analysis.`)) {
       try {
-        const response = await fetch('/api/test/create', {
+        const response = await fetch('/api/audit/run', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             project: '{{ project.path }}',
-            branch: branch,
-            name: testName,
-            code: testCode
+            branch: branch
           })
         });
         
         if (response.ok) {
-          alert('Test created successfully!');
-          closeTestForm();
-          window.location.reload();
+          const result = await response.json();
+          alert('AI Audit started! Redirecting to real-time results...');
+          window.location.href = `/run/${result.audit_id}`;
         } else {
-          alert('Failed to create test');
+          alert('Failed to start AI audit');
         }
       } catch (error) {
-        alert('Error creating test: ' + error.message);
+        alert('Error starting audit: ' + error.message);
       }
     }
-    
-    async function runTests(branch) {
-      if (confirm(`Run all tests for branch ${branch}?`)) {
-        try {
-          const response = await fetch('/api/test/run', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              project: '{{ project.path }}',
-              branch: branch
-            })
-          });
-          
-          if (response.ok) {
-            alert('Tests started! Check the results page for updates.');
-          } else {
-            alert('Failed to start tests');
-          }
-        } catch (error) {
-          alert('Error running tests: ' + error.message);
-        }
-      }
-    }
-  </script>
-</body>
-</html>
+  }
+  
+  function viewReport(branch) {
+    // Navigate to the latest audit report for this branch
+    window.location.href = `/project/{{ project.path }}/branch/${branch}/reports`;
+  }
+</script>
+{% endblock %}

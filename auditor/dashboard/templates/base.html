@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}UatuAudit{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="/static/grid-system.css" rel="stylesheet">
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+  <div class="grid-container">
+    <!-- HEADER ROW (Row 1) - ALWAYS CONSISTENT -->
+    {% include 'components/header.html' %}
+    
+    <!-- MAIN CONTENT AREA (Rows 2-8) -->
+    {% block main_content %}
+    <!-- Page-specific content goes here -->
+    {% endblock %}
+  </div>
+  
+  {% block scripts %}{% endblock %}
+  
+  <!-- Global wallet connection function -->
+  <script>
+    // Global wallet connection function
+    async function connectWallet() {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          // Request account access
+          const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts'
+          });
+          
+          if (accounts.length > 0) {
+            const userAddress = accounts[0];
+            
+            // Check if connected to Base chain
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            const baseChainId = '0x2105'; // Base mainnet
+            
+            if (chainId !== baseChainId) {
+              try {
+                await window.ethereum.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: baseChainId }],
+                });
+              } catch (switchError) {
+                // If the chain doesn't exist, add it
+                if (switchError.code === 4902) {
+                  try {
+                    await window.ethereum.request({
+                      method: 'wallet_addEthereumChain',
+                      params: [{
+                        chainId: baseChainId,
+                        chainName: 'Base',
+                        rpcUrls: ['https://mainnet.base.org'],
+                        nativeCurrency: {
+                          name: 'ETH',
+                          symbol: 'ETH',
+                          decimals: 18
+                        },
+                        blockExplorerUrls: ['https://basescan.org']
+                      }]
+                    });
+                  } catch (addError) {
+                    console.error('Failed to add Base chain:', addError);
+                    alert('Please switch to Base network manually');
+                    return;
+                  }
+                } else {
+                  console.error('Failed to switch to Base chain:', switchError);
+                  alert('Please switch to Base network manually');
+                  return;
+                }
+              }
+            }
+            
+            // Sign message for authentication
+            const message = `UatuAudit Login\nWallet: ${userAddress}\nTimestamp: ${Date.now()}`;
+            
+            // Request signature
+            const signature = await window.ethereum.request({
+              method: 'personal_sign',
+              params: [message, userAddress]
+            });
+            
+            // Send authentication request to backend
+            const authResponse = await fetch('/api/auth/wallet', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                wallet_address: userAddress,
+                message: message,
+                signature: signature
+              })
+            });
+            
+            if (authResponse.ok) {
+              // Store session data in localStorage for client-side checks
+              const sessionData = {
+                wallet_address: userAddress,
+                connected_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+              };
+              localStorage.setItem('uatu_session', JSON.stringify(sessionData));
+              
+              // Redirect to dashboard
+              window.location.href = '/dashboard';
+            } else {
+              console.error('Authentication failed:', await authResponse.text());
+              alert('Authentication failed. Please try again.');
+            }
+            
+          } else {
+            alert('No accounts found. Please connect your wallet.');
+          }
+        } catch (error) {
+          console.error('Wallet connection failed:', error);
+          alert('Failed to connect wallet. Please try again.');
+        }
+      } else {
+        alert('Please install MetaMask or another Web3 wallet to continue.');
+      }
+    }
+  </script>
+</body>
+</html>

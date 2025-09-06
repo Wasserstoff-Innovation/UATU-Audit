@@ -1,51 +1,148 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portfolio - UatuAudit</title>
-  <style>
-    body { background:#0B1B2B; color:#D5E4F0; font-family: Inter, system-ui, sans-serif; margin:0; padding:24px; }
-    .wrap { max-width: 1000px; margin: 0 auto; }
-    h1 { color:#F7D046; }
-    .card { background: rgba(16,33,50,0.5); border:1px solid rgba(84,130,158,.4); border-radius:8px; padding:16px; margin-top:16px; }
-    .row { display:flex; gap:12px; align-items:center; }
-    .btn { display:inline-block; padding:8px 12px; border-radius:6px; text-decoration:none; border:1px solid rgba(84,130,158,.4); color:#D5E4F0; }
-    .btn:hover { border-color:#4CE3B8; color:#4CE3B8; }
-    .muted { color:#9CB4C6; font-size:14px; }
-  </style>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    function back(){ window.location.href = '/dashboard'; }
-  </script>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Portfolio — UatuAudit{% endblock %}
+
+{% set show_back_button = true %}
+{% set back_url = '/dashboard' %}
+
+{% block header_content %}
+<!-- Portfolio title in grid cells 3-6 -->
+<div class="grid-cell" style="grid-column:3/7; grid-row:1/2; display:flex; align-items:center; padding-left:20px;">
+  <h1 class="page-title" style="color:var(--ice-100); font-size:24px; font-weight:700;">Portfolio</h1>
+</div>
+<!-- Menu cells for spacing -->
+<div class="grid-cell menu-cell" style="grid-column:7/8; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:8/9; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:9/10; grid-row:1/2;"></div>
+<div class="grid-cell menu-cell" style="grid-column:10/11; grid-row:1/2;"></div>
+{% endblock %}
+
+{% block main_content %}
+<!-- Portfolio content -->
+<div style="grid-column:1/13; grid-row:2/9; padding:20px;">
   <div class="wrap">
-    <a class="btn" href="/dashboard">← Back</a>
-    <h1>Portfolio</h1>
-    {% if error %}
-      <div class="card">{{ error }}</div>
-    {% elif portfolio %}
-      <div class="card">
-        <div class="row">
-          <div>Timestamp:</div>
-          <div class="muted">{{ portfolio.ts }}</div>
+    <div class="card">
+      <div class="row">
+        <h2 style="color:var(--halo-gold); margin:0;">Audit Portfolio</h2>
+        <a href="/download/portfolio/pdf" class="btn">Download PDF</a>
+        <a href="/download/portfolio/csv" class="btn">Download CSV</a>
+      </div>
+      <p class="muted">Your complete audit history and performance metrics.</p>
+    </div>
+    
+    <div class="card">
+      <h3 style="color:var(--ice-100); margin-bottom:12px;">Recent Audits</h3>
+      <div id="recent-audits">
+        <p class="muted">Loading recent audits...</p>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3 style="color:var(--ice-100); margin-bottom:12px;">Statistics</h3>
+      <div id="portfolio-stats">
+        <p class="muted">Loading statistics...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  .card { 
+    background: rgba(16,33,50,0.5); 
+    border:1px solid var(--grid-line); 
+    border-radius:8px; 
+    padding:16px; 
+    margin-top:16px; 
+  }
+  .row { 
+    display:flex; 
+    gap:12px; 
+    align-items:center; 
+  }
+  .btn { 
+    display:inline-block; 
+    padding:8px 12px; 
+    border-radius:6px; 
+    text-decoration:none; 
+    border:1px solid var(--grid-line); 
+    color:var(--ice-200); 
+    transition:all 0.2s;
+  }
+  .btn:hover { 
+    border-color:var(--mint-400); 
+    color:var(--mint-400); 
+  }
+  .muted { 
+    color:var(--ice-300); 
+    font-size:14px; 
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    loadPortfolio();
+  });
+
+  async function loadPortfolio() {
+    try {
+      // Load portfolio data
+      const response = await fetch('/api/audits/list');
+      if (response.ok) {
+        const data = await response.json();
+        displayRecentAudits(data.audits || []);
+        displayStats(data.audits || []);
+      } else {
+        console.error('Failed to load portfolio data');
+      }
+    } catch (error) {
+      console.error('Error loading portfolio:', error);
+    }
+  }
+
+  function displayRecentAudits(audits) {
+    const container = document.getElementById('recent-audits');
+    if (audits.length === 0) {
+      container.innerHTML = '<p class="muted">No audits found.</p>';
+    } else {
+      container.innerHTML = audits.slice(0, 5).map(audit => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--grid-line);">
+          <div>
+            <strong style="color:var(--ice-100);">${audit.repo_name || 'Unknown Project'}</strong>
+            <span class="muted"> - ${audit.branch_name || 'Unknown Branch'}</span>
+          </div>
+          <span class="muted">${audit.started_at ? new Date(audit.started_at).toLocaleDateString() : 'Unknown Date'}</span>
         </div>
-        <div class="row">
-          <div>Overall:</div>
-          <div class="muted">{{ '%.1f'|format(portfolio.overall) }}</div>
+      `).join('');
+    }
+  }
+
+  function displayStats(audits) {
+    const container = document.getElementById('portfolio-stats');
+    const totalAudits = audits.length;
+    const completedAudits = audits.filter(a => a.status === 'completed').length;
+    const runningAudits = audits.filter(a => a.status === 'running').length;
+    
+    container.innerHTML = `
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:var(--halo-gold);">${totalAudits}</div>
+          <div class="muted">Total Audits</div>
         </div>
-        <div style="margin-top:12px;">
-          {% if portfolio.portfolio_pdf %}<a class="btn" href="/download/portfolio.pdf">Download PDF</a>{% endif %}
-          {% if portfolio.portfolio_csv %}<a class="btn" href="/download/portfolio.csv">Download CSV</a>{% endif %}
+        <div style="text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:var(--mint-400);">${completedAudits}</div>
+          <div class="muted">Completed</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:var(--ice-300);">${runningAudits}</div>
+          <div class="muted">Running</div>
         </div>
       </div>
-    {% else %}
-      <div class="card">No portfolio data yet.</div>
-    {% endif %}
-  </div>
-</body>
-</html>
-
-
+    `;
+  }
+</script>
+{% endblock %}
